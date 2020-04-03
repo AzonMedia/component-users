@@ -3,17 +3,25 @@ declare(strict_types=1);
 
 namespace GuzabaPlatform\Users;
 
+use Guzaba2\Base\Exceptions\RunTimeException;
+use GuzabaPlatform\Components\Base\BaseComponent;
+use GuzabaPlatform\Components\Base\Interfaces\ComponentInitializationInterface;
 use GuzabaPlatform\Components\Base\Interfaces\ComponentInterface;
-use GuzabaPlatform\Components\Base\Traits\ComponentTrait;
 
 /**
  * Class Component
  * @package Azonmedia\Tags
  */
-class Component implements ComponentInterface
+class Component extends BaseComponent implements ComponentInterface, ComponentInitializationInterface
 {
 
-    use ComponentTrait;
+    protected const CONFIG_DEFAULTS = [
+        'services'      => [
+            'FrontendRouter',
+        ],
+    ];
+
+    protected const CONFIG_RUNTIME = [];
 
     protected const COMPONENT_NAME = "Users";
     //https://components.platform.guzaba.org/component/{vendor}/{component}
@@ -25,5 +33,31 @@ class Component implements ComponentInterface
     protected const VENDOR_URL = 'https://azonmedia.com';
 
 
+    /**
+     * @return array
+     * @throws RunTimeException
+     */
+    public static function run_all_initializations() : array
+    {
+        self::register_routes();
+        return ['register_routes'];
+    }
+
+
+    /**
+     * @throws RunTimeException
+     */
+    public static function register_routes() : void
+    {
+        $FrontendRouter = self::get_service('FrontendRouter');
+        $additional = [
+            'name'  => 'Users',
+            'meta' => [
+                'in_navigation' => TRUE, //to be shown in the admin navigation
+                //'additional_template' => '@GuzabaPlatform.Users/UsersNavigationHook.vue',//here the list of classes will be expanded
+            ],
+        ];
+        $FrontendRouter->{'/admin'}->add('users', '@GuzabaPlatform.Users/UsersAdmin.vue' ,$additional);
+    }
 
 }
