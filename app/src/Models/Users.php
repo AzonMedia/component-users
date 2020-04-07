@@ -55,7 +55,7 @@ class Users extends Base
      * @throws ConfigurationException
      * @throws \ReflectionException
      */
-    public static function get_users(array $search_criteria, string $order_by = 'user_name', string $order = 'ASC', int $offset = 0, int $limit = 0, ?int &$total_found_rows = NULL): iterable
+    public static function get_users(array $search_criteria, int $offset = 0, int $limit = 0,  string $order_by = 'user_name', string $order = 'ASC', ?int &$total_found_rows = NULL): iterable
     {
 
         foreach ($search_criteria as $key=>$value) {
@@ -105,6 +105,7 @@ class Users extends Base
             $inheriting_roles_ids[] = $Role->get_id();//must include the role itself as it may be granted directly to the user role
             $ids_placeholder = $Connection::array_placeholder($inheriting_roles_ids, 'role');
             $w[] = "roles_hierarchy.inherited_role_id IN ({$ids_placeholder})";
+            $b['role'] = $inheriting_roles_ids;
         }
 
         if ($w) {
@@ -122,13 +123,16 @@ class Users extends Base
 
         $q = "
 SELECT
-    *,
-    GROUP_CONCAT(roles_hierarchy.inherited_role_id SEPARATOR ',') AS inherited_role_ids
+    users.user_id, users.user_name, users.user_email, users.role_id,
+    meta.meta_object_uuid, meta.meta_class_id, meta.meta_object_create_microtime, meta.meta_object_last_update_microtime,
+    meta.meta_object_create_role_id, meta.meta_object_last_update_role_id,
+    GROUP_CONCAT(roles_hierarchy.inherited_role_id SEPARATOR ',') AS inherited_role_ids,
+    GROUP_CONCAT(roles.role_name SEPARATOR ',') AS inherited_roles_names
 FROM
     {$Connection::get_tprefix()}{$users_table} AS users
     INNER JOIN {$Connection::get_tprefix()}{$meta_table} AS meta ON meta.meta_object_id = users.user_id AND meta.meta_class_id = :meta_class_id
-    INNER JOIN {$Connection::get_tprefix()}{$roles_hierarchy_table} AS roles_hierarchy ON roles_hierarchy.role_id = users.role_id
-    INNER JOIN {$Connection::get_tprefix()}{$roles_table} AS roles ON roles.role_id = roles_hierarchy.role_id
+    LEFT JOIN {$Connection::get_tprefix()}{$roles_hierarchy_table} AS roles_hierarchy ON roles_hierarchy.role_id = users.role_id
+    LEFT JOIN {$Connection::get_tprefix()}{$roles_table} AS roles ON roles.role_id = roles_hierarchy.inherited_role_id
 {$w_str}
 GROUP BY
     users.user_id
