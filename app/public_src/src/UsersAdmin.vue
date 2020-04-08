@@ -2,7 +2,7 @@
     <div class="crud">
         <div class="content">
             <div id="data" class="tab">
-                <h3>Users <b-button variant="success" @click="showModal('post', newObject)" size="sm">Create New</b-button> </h3>
+                <h3>Users <b-button variant="success" @click="show_modal('post', newObject)" size="sm">Create New</b-button> </h3>
 
                 <template>
                     <b-form @submit="submitSearch">
@@ -14,7 +14,13 @@
                                     <template v-if="field.key=='action'">
                                         <b-button size="sm" variant="outline-primary" type="submit" @click="search()">Search</b-button>
                                     </template>
-
+                                    <template v-else-if="field.key=='inherits_role_name'">
+                                        <!-- <b-button size="sm" variant="outline-primary" type="submit" @click="search()">Search</b-button> -->
+                                        <!-- <v-select v-model="searchValues[field.key]" label="role_name" :options="roles"></v-select> -->
+                                        <!-- while the column is named inherits_role_name actually object_meta_uuid is provided so the field name should be inherits_role_uuid -->
+                                        <!-- :reduce makes return only the uuid not the whole object role_name:meta_object_uuid -->
+                                        <v-select v-model="searchValues['inherits_role_uuid']" label="role_name" :reduce="role_name => role_name.meta_object_uuid" :options="roles"></v-select>
+                                    </template>
                                     <template v-else>
                                         <b-form-input v-model="searchValues[field.key]" type="search" :placeholder="field.label"></b-form-input>
                                     </template>
@@ -23,9 +29,9 @@
 
                             <!-- <template v-slot:cell(meta_object_uuid)="row"> -->
                             <template v-slot:cell(action)="row">
-                                <b-button size="sm" variant="outline-danger" v-on:click.stop="" @click="showModal('delete', row.item)">Delete</b-button>
+                                <b-button size="sm" variant="outline-danger" v-on:click.stop="" @click="show_modal('delete', row.item)">Delete</b-button>
 
-                                <b-button size="sm" variant="outline-success" v-on:click.stop="" @click="showPermissions( row.item)">Permissions</b-button>
+                                <b-button size="sm" variant="outline-success" v-on:click.stop="" @click="show_permissions( row.item)">Permissions</b-button>
                             </template>
 
                         </b-table>
@@ -44,7 +50,7 @@
                         :ok-title="ButtonTitle"
                         :ok-variant="ButtonVariant"
                         centered
-                        @ok="proceedAction($event)"
+                        @ok="proceed_action($event)"
                         :cancel-disabled="actionState"
                         :ok-disabled="loadingState"
                         :ok-only="actionState && !loadingState"
@@ -107,7 +113,7 @@
 
                         <!-- permision_uuid is just a value that can not be used here as it is only for the first row/role -->
                         <template v-slot:[setSlotCell(action_name)]="row" v-for="(permission_uuid, action_name) in items_permissions[0].permissions">
-                            <b-form-checkbox :value="row.item.permissions[action_name] ? row.item.permissions[action_name] : 0" unchecked-value="" @change="togglePermission(row.item, action_name, row.item.permissions[action_name] ? 1 : 0)" v-model="row.item.permissions[action_name]"></b-form-checkbox>
+                            <b-form-checkbox :value="row.item.permissions[action_name] ? row.item.permissions[action_name] : 0" unchecked-value="" @change="toggle_permission(row.item, action_name, row.item.permissions[action_name] ? 1 : 0)" v-model="row.item.permissions[action_name]"></b-form-checkbox>
                         </template>
 
                     </b-table>
@@ -123,13 +129,17 @@
     import Hook from '@GuzabaPlatform.Platform/components/hooks/Hooks.vue'
     import ToastMixin from '@GuzabaPlatform.Platform/ToastMixin.js'
 
+    import vSelect from 'vue-select'
+    import 'vue-select/dist/vue-select.css'
+
     export default {
         name: "UsersAdmin",
         mixins: [
             ToastMixin,
         ],
         components: {
-            Hook
+            Hook,
+            vSelect,
         },
         data() {
             return {
@@ -190,7 +200,10 @@
                 isBusy_permissions: false,
                 selectedObject: {},
 
-                newObject: {}
+                newObject: {},
+
+                /** The non-user roles */
+                roles: [],
             }
         },
         methods: {
@@ -204,14 +217,20 @@
                 this.search()
             },
 
+            get_roles() {
+                this.$http.get('/admin/users/roles')
+                    .then(resp => {
+                        this.roles = resp.data.roles;
+                    })
+                    .catch(err => {
+                        this.$bvToast.toast('Roles could not be loaded due to server error.' + '\n' + err.response.data.message)
+                    });
+            },
+
             get_users() {
 
                 this.fields = [];
                 this.newObject = {};
-
-                this.resetParams();
-                this.searchValues = {};
-
 
                 for (let key in this.searchValues) {
                     if (this.searchValues[key] == '') {
@@ -254,24 +273,22 @@
             },
 
             search() {
-                this.resetParams();
+                this.reset_params();
                 this.get_users();
             },
 
-            //resetParams(className){
-            resetParams(){
+            //reset_params(className){
+            reset_params(){
                 this.currentPage = 1;
                 this.totalItems = 0;
-                //this.selectedClassName = className;
-                //this.selectedClassNameShort = className.split("-").pop();
                 this.sortBy = 'user_name';
             },
 
             rowClickHandler(record, index) {
-                this.showModal('put', record);
+                this.show_modal('put', record);
             },
 
-            showModal(action, row) {
+            show_modal(action, row) {
                 this.action = action;
                 this.crudObjectUuid = null;
                 this.putValues = {};
@@ -326,7 +343,7 @@
 
             },
 
-            proceedAction(bvEvt) {
+            proceed_action(bvEvt) {
                 if(!this.actionState) {
                     bvEvt.preventDefault() //if actionState is false, doesn't close the modal
                     this.actionState = true
@@ -394,35 +411,33 @@
                 }
             },
 
-            showPermissions(row) {
-                console.log(row);
+            show_permissions(row) {
                 this.title_permissions = "Permissions for object of class \"" + row.meta_class_name + "\" with id: " + row.meta_object_id + ", object_uuid: " + row.meta_object_uuid;
                 this.selectedObject = row;
-                var self = this;
+                let self = this;
                 this.$http.get('/admin/permissions-objects/' + this.selectedClassName.split('\\').join('-') + '/' + row.meta_object_uuid)
-                    .then(resp => {
-                        self.items_permissions = Object.values(resp.data.items);
-                        //self.fields_permissions = self.fields_permissions_base;//reset the columns
-                        self.fields_permissions = JSON.parse(JSON.stringify(self.fields_permissions_base)) //deep clone and produce again Array
-                        for (let action_name in self.items_permissions[0].permissions) {
-                            self.fields_permissions.push({
-                                key: action_name,
-                                label: action_name,
-                                sortable: true,
-                            });
-                        }
-                    })
-                    .catch(err => {
-                        console.log(err);
-                        self.requestError = err;
-                        self.items_permissions = [];
-                    }).finally(function(){
+                .then(resp => {
+                    self.items_permissions = Object.values(resp.data.items);
+                    //self.fields_permissions = self.fields_permissions_base;//reset the columns
+                    self.fields_permissions = JSON.parse(JSON.stringify(self.fields_permissions_base)) //deep clone and produce again Array
+                    for (let action_name in self.items_permissions[0].permissions) {
+                        self.fields_permissions.push({
+                            key: action_name,
+                            label: action_name,
+                            sortable: true,
+                        });
+                    }
+                })
+                .catch(err => {
+                    self.requestError = err;
+                    self.items_permissions = [];
+                }).finally(function(){
                     self.$bvModal.show('crud-permissions');
                 });
 
             },
 
-            togglePermission(row, action, checked){
+            toggle_permission(row, action, checked){
                 this.isBusy_permission = true;
 
                 let sendValues = {}
@@ -434,11 +449,11 @@
 
                     this.action = "delete";
 
-                    var url = 'acl-permissions/' + object_uuid;
+                    let url = 'acl-permissions/' + object_uuid;
                 } else {
                     this.action = "post";
 
-                    var url = 'acl-permissions';
+                    let url = 'acl-permissions';
 
                     sendValues.role_id = row.role_id;
                     sendValues.object_id = this.selectedObject.meta_object_id;
@@ -446,27 +461,26 @@
                     sendValues.class_name = this.selectedClassName.split(".").join("\\");
                 }
 
-
-                var self = this;
+                let self = this;
 
                 this.$http({
                     method: this.action,
                     url: url,
                     data: sendValues
                 })
-                    .then(resp => {
-                        this.$bvToast.toast(resp.data.message)
-                    })
-                    .catch(err => {
-                        console.log(err);
-                        this.$bvToast.toast(err.response.data.message)
-                        //self.requestError = err;
+                .then(resp => {
+                    this.$bvToast.toast(resp.data.message)
+                })
+                .catch(err => {
+                    console.log(err);
+                    this.$bvToast.toast(err.response.data.message)
+                    //self.requestError = err;
 
-                    })
-                    .finally(function(){
-                        self.showPermissions(self.selectedObject)
-                        self.isBusy_permission = false;
-                    });
+                })
+                .finally(function(){
+                    self.show_permissions(self.selectedObject)
+                    self.isBusy_permission = false;
+                });
             },
 
             sortingChanged(ctx) {
@@ -498,7 +512,8 @@
             // }
         },
         mounted() {
-            this.get_users(this.selectedClassName);
+            this.get_roles();
+            this.get_users();
 
         },
     };

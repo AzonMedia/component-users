@@ -32,11 +32,13 @@ class Users extends Base
 
     public const SEARCH_CRITERIA = [
         'user_uuid',
+        'meta_object_uuid',//the same as user_uuid
         'user_id',
         'user_name',
         'user_email',
         'user_disabled',
         'inherits_role_uuid',
+        'inherits_role_name',
     ];
 
     /**
@@ -80,8 +82,12 @@ class Users extends Base
             $b['user_id'] = $search_criteria['user_id'];
         }
         if (array_key_exists('user_uuid', $search_criteria) && $search_criteria['user_uuid'] !== NULL) {
-            $w[] = "meta.meta_object_uuid = :user_uuid";
-            $b['user_uuid'] = $search_criteria['user_uuid'];
+            $w[] = "meta.meta_object_uuid LIKE :user_uuid";
+            $b['user_uuid'] = '%'.$search_criteria['user_uuid'].'%';
+        }
+        if (array_key_exists('meta_object_uuid', $search_criteria) && $search_criteria['meta_object_uuid'] !== NULL) {
+            $w[] = "meta.meta_object_uuid LIKE :user_uuid";
+            $b['user_uuid'] = '%'.$search_criteria['meta_object_uuid'].'%';
         }
         if (array_key_exists('user_name', $search_criteria) && $search_criteria['user_name'] !== NULL) {
             $w[] = "users.user_name LIKE :user_name";
@@ -101,8 +107,18 @@ class Users extends Base
             } catch (RecordNotFoundException $Exception) {
                 throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('There is no role with UUID %1s as provided in "%2s" key in $search_criteria.'), $search_criteria['inherits_role_uuid'], 'inherits_role_uuid' ));
             }
-            $inheriting_roles_ids = $Role->get_all_inheriting_roles_ids();
-            $inheriting_roles_ids[] = $Role->get_id();//must include the role itself as it may be granted directly to the user role
+            $inheriting_roles_ids = $Role->get_all_inheriting_roles_ids();//already includes this role id
+            $ids_placeholder = $Connection::array_placeholder($inheriting_roles_ids, 'role');
+            $w[] = "roles_hierarchy.inherited_role_id IN ({$ids_placeholder})";
+            $b['role'] = $inheriting_roles_ids;
+        }
+        if (array_key_exists('inherits_role_name', $search_criteria) && $search_criteria['inherits_role_name'] !== NULL) {
+            try {
+                $Role = new Role( ['role_name' => $search_criteria['inherits_role_name'] ]);//role_name is unique
+            } catch (RecordNotFoundException $Exception) {
+                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('There is no role with role_name %1s as provided in "%2s" key in $search_criteria.'), $search_criteria['inherits_role_name'], 'inherits_role_name' ));
+            }
+            $inheriting_roles_ids = $Role->get_all_inheriting_roles_ids();//already includes this role id
             $ids_placeholder = $Connection::array_placeholder($inheriting_roles_ids, 'role');
             $w[] = "roles_hierarchy.inherited_role_id IN ({$ids_placeholder})";
             $b['role'] = $inheriting_roles_ids;
@@ -126,8 +142,8 @@ SELECT
     users.user_id, users.user_name, users.user_email, users.role_id,
     meta.meta_object_uuid, meta.meta_class_id, meta.meta_object_create_microtime, meta.meta_object_last_update_microtime,
     meta.meta_object_create_role_id, meta.meta_object_last_update_role_id,
-    GROUP_CONCAT(roles_hierarchy.inherited_role_id SEPARATOR ',') AS inherited_role_ids,
-    GROUP_CONCAT(roles.role_name SEPARATOR ',') AS inherited_roles_names
+    GROUP_CONCAT(roles_hierarchy.inherited_role_id SEPARATOR ',') AS inherits_role_id,
+    GROUP_CONCAT(roles.role_name SEPARATOR ',') AS inherits_role_name
 FROM
     {$Connection::get_tprefix()}{$users_table} AS users
     INNER JOIN {$Connection::get_tprefix()}{$meta_table} AS meta ON meta.meta_object_id = users.user_id AND meta.meta_class_id = :meta_class_id
