@@ -4,6 +4,7 @@
             <div id="data" class="tab">
                 <h3>Users <b-button variant="success" @click="show_modal('post', newObject)" size="sm">Create New</b-button> </h3>
 
+                <!-- ======================= USERS LISTING ================== -->
                 <template>
                     <b-form @submit="submitSearch">
                         <b-table striped show-empty :items="items" :fields="fields" empty-text="No records found!" @row-clicked="rowClickHandler" no-local-sorting @sort-changed="sortingChanged" head-variant="dark" table-hover>
@@ -40,6 +41,7 @@
 
                 <b-pagination v-if="totalItems > limit" size="md" :total-rows="totalItems" v-model="currentPage" :per-page="limit"  align="center"></b-pagination>
 
+                <!-- ======================= MODAL UPDATE & DELETE ================== -->
                 <b-modal
                         id="crud-modal"
                         :title="modalTitle"
@@ -50,21 +52,35 @@
                         :ok-title="ButtonTitle"
                         :ok-variant="ButtonVariant"
                         centered
-                        @ok="proceed_action($event)"
+                        @ok="update_modal_ok_handler"
                         :cancel-disabled="actionState"
                         :ok-disabled="loadingState"
                         :ok-only="actionState && !loadingState"
                         size="lg"
                 >
                     <template v-if="!actionState">
-                        <p>{{actionTitle}}</p>
+                        <!-- <p>{{actionTitle}}</p> -->
+                        <!-- apply filter "humanize" on the label -->
+                        <b-form-group class="form-group" v-for="(value, index) in putValues" v-if="index!='meta_object_uuid'" :label="index + ':' | humanize" label-align="right" label-cols="3">
 
-                        <b-form-group class="form-group" v-for="(value, index) in putValues" v-if="index!='meta_object_uuid'" :label="index" label-align="right" label-cols="3">
+                            <template v-if="index=='inherits_role_name'">
+                                <!-- show checkboxes with roles -->
+                                <!--
+                                <template v-for="(Role, index) in roles">
+                                </template> -->
+                                <!-- <b-form-group v-for="(Role, index) in roles" :label="Role.role_name" label-align="right">
+                                </b-form-group> -->
+                                <b-form-checkbox-group id="granted_roles" v-model="granted_roles" name="granted_roles">
+                                    <!-- <b-form-checkbox v-for="(Role, index) in roles" :value="Role.meta_object_uuid">{{Role.role_name}}</b-form-checkbox> -->
+                                    <!-- because the inherits_role_uuid is not included in the record_properties, only role name, the checkboxes will be driven by name (which is also unique) -->
+                                    <b-form-checkbox v-for="(Role, index) in roles" :value="Role.role_name">{{Role.role_name}}</b-form-checkbox>
+                                    <!-- {{ putValues }} -->
+                                </b-form-checkbox-group>
 
-                            <template v-if="action=='delete'">
+                            </template>
+                            <template v-else-if="action=='delete'">
                                 <b-form-input :value="value" disabled></b-form-input>
                             </template>
-
                             <template v-else>
                                 <b-form-input v-model="putValues[index]"></b-form-input>
                             </template>
@@ -90,6 +106,7 @@
                 </b-modal>
 
 
+                <!-- ======================= MODAL PERMISSIONS ================== -->
                 <b-modal
                         id="crud-permissions"
                         :title="title_permissions"
@@ -174,7 +191,9 @@
                 successfulMessage: '',
 
                 items: [],
-                fields: [],
+                fields: [],//these are the columns
+                record_properties: [],
+                editable_record_properties: [],
 
                 items_permissions: [
                     //must have a default even empty value to avoid the error on template load
@@ -204,6 +223,8 @@
 
                 /** The non-user roles */
                 roles: [],
+                /** Used by the modification modal */
+                granted_roles: [],
             }
         },
         methods: {
@@ -250,8 +271,8 @@
                         //     key: key,
                         //     sortable: true
                         // });
-                        for (let i in resp.data.properties) {
-                            let key = resp.data.properties[i];
+                        for (let i in resp.data.listing_columns) {
+                            let key = resp.data.listing_columns[i];
                             self.fields.push({
                                 key: key,
                                 sortable: true
@@ -263,8 +284,12 @@
                             key: 'action',
                             sortable: true
                         });
+
                         self.items = resp.data.data;
                         self.totalItems = resp.data.totalItems;
+
+                        self.record_properties = resp.data.record_properties;
+                        self.editable_record_properties = resp.data.editable_record_properties;
                     })
                     .catch(err => {
                         //console.log(err);
@@ -278,7 +303,7 @@
             },
 
             //reset_params(className){
-            reset_params(){
+            reset_params() {
                 this.currentPage = 1;
                 this.totalItems = 0;
                 this.sortBy = 'user_name';
@@ -296,17 +321,21 @@
                 for (let key in row) {
                     if (key == "meta_object_uuid") {
                         this.crudObjectUuid = row[key];
-                    } else if (!key.includes("meta_")){
+                    //} else if (!key.includes("meta_")){
+                    } else if (!key.includes("meta_") && this.record_properties.includes(key)) { // show only the properties listed in record_properties
                         this.putValues[key] = row[key];
                     }
                 }
+                //console.log(this.putValues);
+                this.granted_roles = this.putValues.inherits_role_name.split(',');
+                //console.log(this.granted_roles);
 
                 switch (this.action) {
                     case 'delete' :
                         this.modalTitle = 'Deleting object';
                         this.modalVariant = 'danger';
                         this.ButtonVariant = 'danger';
-                        this.actionTitle = 'Are you sure, you want to delete object:';
+                        //this.actionTitle = 'Are you sure, you want to delete object:';
                         this.ButtonTitle = 'Delete';
                         break;
 
@@ -315,7 +344,8 @@
                         this.modalVariant = 'success';
                         this.ButtonVariant = 'success';
                         //this.actionTitle = this.selectedClassNameShort + ":";
-                        this.actionTitle = this.selectedClassName + ":";
+                        //this.actionTitle = this.selectedClassName + ":";
+                        //this.actionTitle = 'Editing user:';
                         this.ButtonTitle = 'Save';
                         break;
 
@@ -324,7 +354,7 @@
                         this.modalVariant = 'success';
                         this.ButtonVariant = 'success';
                         //this.actionTitle = this.selectedClassNameShort + ":";
-                        this.actionTitle = this.selectedClassName + ":";
+                        //this.actionTitle = this.selectedClassName + ":";
                         this.ButtonTitle = 'Save';
                         break;
                 }
@@ -343,7 +373,7 @@
 
             },
 
-            proceed_action(bvEvt) {
+            update_modal_ok_handler(bvEvt) {
                 if(!this.actionState) {
                     bvEvt.preventDefault() //if actionState is false, doesn't close the modal
                     this.actionState = true
@@ -383,7 +413,9 @@
                             delete sendValues['meta_object_uuid'];
                             break;
                     }
-                    sendValues.crud_class_name = this.selectedClassName.split('\\').join('-');
+                    //sendValues.crud_class_name = this.selectedClassName.split('\\').join('-');
+                    sendValues.crud_class_name = 'GuzabaPlatform\\Platform\\Authorization\\Models\\User';
+                    //due to the Roles management the basic CRUD operation can not be used and a custom controller is needed
 
                     this.$http({
                         method: this.action,

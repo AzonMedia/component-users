@@ -42,7 +42,7 @@ class Users extends BaseController
         $offset = ($page - 1) * $limit;
         $search = json_decode(base64_decode(urldecode($search_values)));
 
-        $active_record_keys = [
+        $listing_columns = [
             'user_id',
             'user_name',
             'user_email',
@@ -50,8 +50,29 @@ class Users extends BaseController
             'meta_object_uuid',
             'inherits_role_name',
         ];
+        $struct['listing_columns'] = $listing_columns;
 
-        $struct['properties'] = $active_record_keys;
+        $record_properties = [
+            'user_id',
+            'user_name',
+            'user_email',
+            'role_id',
+            'meta_object_uuid',
+            'inherits_role_name',
+        ];
+        $struct['record_properties'] = $record_properties;
+
+        $editable_record_properties = [
+            //'user_id',
+            'user_name',
+            'user_email',
+            //'role_id',
+            //'meta_object_uuid',
+            'inherits_role_name',
+        ];
+        $struct['editable_record_properties'] = $editable_record_properties;
+
+
 
         //$struct['data'] = Users::get_data_by((array) $search, $offset, $limit, $use_like = TRUE, $sort_by, (bool) $sort_desc, $total_found_rows);
         $struct['data'] = \GuzabaPlatform\Users\Models\Users::get_users((array) $search, $offset, $limit = 0, $sort_by, $sort, $total_found_rows);
