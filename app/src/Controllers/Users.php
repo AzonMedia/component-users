@@ -31,8 +31,29 @@ class Users extends BaseController
 
     protected const CONFIG_RUNTIME = [];
 
+    public const LISTING_COLUMNS = [
+        'user_id',
+        'user_name',
+        'user_email',
+        'role_id',
+        'meta_object_uuid',
+        'inherits_role_name',
+    ];
 
-
+    /**
+     * @param int $page
+     * @param int $limit
+     * @param string $search_values
+     * @param string $sort_by
+     * @param string $sort
+     * @return ResponseInterface
+     * @throws \Azonmedia\Exceptions\InvalidArgumentException
+     * @throws \Guzaba2\Base\Exceptions\InvalidArgumentException
+     * @throws \Guzaba2\Base\Exceptions\LogicException
+     * @throws \Guzaba2\Base\Exceptions\RunTimeException
+     * @throws \Guzaba2\Kernel\Exceptions\ConfigurationException
+     * @throws \ReflectionException
+     */
     public function main(int $page, int $limit, string $search_values, string $sort_by, string $sort): ResponseInterface
     {
         $struct = [];
@@ -44,27 +65,9 @@ class Users extends BaseController
         $offset = ($page - 1) * $limit;
         $search = json_decode(base64_decode(urldecode($search_values)));
 
-        $listing_columns = [
-            'user_id',
-            'user_name',
-            'user_email',
-            'role_id',
-            'meta_object_uuid',
-            'inherits_role_name',
-        ];
-        $struct['listing_columns'] = $listing_columns;
-
-        $record_properties = [
-
-        ];
+        $struct['listing_columns'] = self::LISTING_COLUMNS;
         $struct['record_properties'] = \GuzabaPlatform\Users\Controllers\User::RECORD_PROPERTIES;
-
-        $editable_record_properties = [
-
-        ];
         $struct['editable_record_properties'] = \GuzabaPlatform\Users\Controllers\User::EDITABLE_RECORD_PROPERTIES;
-
-
 
         //$struct['data'] = Users::get_data_by((array) $search, $offset, $limit, $use_like = TRUE, $sort_by, (bool) $sort_desc, $total_found_rows);
         $struct['data'] = \GuzabaPlatform\Users\Models\Users::get_users((array) $search, $offset, $limit = 0, $sort_by, $sort, $total_found_rows);

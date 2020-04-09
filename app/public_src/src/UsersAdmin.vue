@@ -61,7 +61,7 @@
                     <template v-if="!actionState">
                         <!-- <p>{{actionTitle}}</p> -->
                         <!-- apply filter "humanize" on the label -->
-                        <b-form-group class="form-group" v-for="(value, index) in putValues" v-if="index!='meta_object_uuid'" :label="index + ':' | humanize" label-align="right" label-cols="3">
+                        <b-form-group class="form-group" v-for="(value, index) in putValues" v-if="index!='meta_object_uuid'" v-bind:key="index" :label="index + ':' | humanize" label-align="right" label-cols="3">
 
                             <template v-if="index=='inherits_role_name'">
                                 <!-- show checkboxes with roles -->
@@ -73,7 +73,7 @@
                                 <b-form-checkbox-group id="granted_roles" v-model="granted_roles" name="granted_roles">
                                     <!-- <b-form-checkbox v-for="(Role, index) in roles" :value="Role.meta_object_uuid">{{Role.role_name}}</b-form-checkbox> -->
                                     <!-- because the inherits_role_uuid is not included in the record_properties, only role name, the checkboxes will be driven by name (which is also unique) -->
-                                    <b-form-checkbox v-for="(Role, index) in roles" :value="Role.role_name">{{Role.role_name}}</b-form-checkbox>
+                                    <b-form-checkbox v-for="(Role, index) in roles" :value="Role.role_name" v-bind:key="Role.role_name">{{Role.role_name}}</b-form-checkbox>
                                     <!-- {{ putValues }} -->
                                 </b-form-checkbox-group>
 

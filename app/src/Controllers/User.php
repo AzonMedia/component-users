@@ -12,6 +12,7 @@ use Guzaba2\Http\Method;
 use Guzaba2\Kernel\Exceptions\ConfigurationException;
 use Guzaba2\Orm\Exceptions\MultipleValidationFailedException;
 use GuzabaPlatform\Platform\Application\BaseController;
+use Guzaba2\Translator\Translator as t;
 use Psr\Http\Message\ResponseInterface;
 use ReflectionException;
 
