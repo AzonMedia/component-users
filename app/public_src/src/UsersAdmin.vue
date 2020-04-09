@@ -382,7 +382,9 @@
                     let self = this;
                     let sendValues = {};
 
-                    let url = '/admin/crud-operations';
+                    //because of the custom login needed for handling the granted roles the ActiveRecordDefaultControllercan not be used
+                    //let url = '/admin/crud-operations';
+                    let url = '/admin/users/user';
 
                     switch(this.action) {
                         case 'delete' :

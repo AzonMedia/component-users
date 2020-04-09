@@ -12,6 +12,8 @@ use Guzaba2\Base\Exceptions\RunTimeException;
 use Guzaba2\Database\Interfaces\ConnectionInterface;
 use Guzaba2\Database\Sql\Mysql\ConnectionCoroutine;
 use Guzaba2\Kernel\Exceptions\ConfigurationException;
+use Guzaba2\Orm\ActiveRecord;
+use Guzaba2\Orm\Exceptions\MultipleValidationFailedException;
 use Guzaba2\Orm\Exceptions\RecordNotFoundException;
 use Guzaba2\Orm\Store\Sql\Mysql;
 use GuzabaPlatform\Platform\Application\MysqlConnectionCoroutine;
@@ -40,6 +42,78 @@ class Users extends Base
         'inherits_role_uuid',
         'inherits_role_name',
     ];
+
+    /**
+     * The create method is on Users as if the GP User class is inherited then the newly created meta records will enter with the new class name
+     * This should not be done as this package (GuzabaPlatform/Users) is just a management package, does not (and should not)
+     * @param array $user_properties
+     * @param array $inherited_role_uuids
+     * @return User
+     * @throws ConfigurationException
+     * @throws InvalidArgumentException
+     * @throws LogicException
+     * @throws RunTimeException
+     * @throws \Guzaba2\Base\Exceptions\InvalidArgumentException
+     * @throws \ReflectionException
+     * @throws MultipleValidationFailedException
+     */
+    public static function create(array $user_properties, array $inherited_role_uuids): User
+    {
+
+        $User = new User();
+        self::update($User, $user_properties, $inherited_role_uuids);
+
+        return $User;
+    }
+
+    /**
+     * @param User $User
+     * @param array $user_properties
+     * @param array $inherited_role_uuids
+     * @throws ConfigurationException
+     * @throws InvalidArgumentException
+     * @throws LogicException
+     * @throws MultipleValidationFailedException
+     * @throws RunTimeException
+     * @throws \Guzaba2\Base\Exceptions\InvalidArgumentException
+     * @throws \ReflectionException
+     */
+    public static function update(User $User, array $user_properties, array $inherited_role_uuids): void
+    {
+        //a transaction is started as the user creation/update and role granting needs to be one operation.
+        $Transaction = ActiveRecord::new_transaction($TR);
+        $Transaction->begin();
+
+        foreach ($user_properties as $property_name=>$property_value) {
+            if (in_array($property_name, ['user_password', 'user_password_confirmation'])) {
+                continue;
+            }
+            $User->{$property_name} = $property_value;
+        }
+        if (!empty($user_properties['user_password']) && !empty($user_properties['user_password_confirmation'])) {
+            $User->set_password($user_properties['user_password'], $user_properties['user_password_confirmation']);
+        }
+
+        $User->write();
+
+        $current_inherited_role_uuids = $User->get_role()->get_inherited_roles_uuids();
+        foreach ($current_inherited_role_uuids as $current_inherited_role_uuid) {
+            if (!in_array($current_inherited_role_uuid, $inherited_role_uuids)) {
+                $Role = new Role($current_inherited_role_uuid);
+                $User->revoke_role($Role);
+            }
+        }
+
+        foreach ($inherited_role_uuids as $inherited_role_uuid) {
+            if (!in_array($inherited_role_uuid, $current_inherited_role_uuids)) {
+                $Role = new Role($inherited_role_uuid);
+                $User->grant_role($Role);
+            }
+        }
+
+        $Transaction->commit();
+
+    }
 
     /**
      * Returns users based on the provided $search_criteria. Please @see self::SEARCH_CRITERIA for the valid keys.

@@ -31,6 +31,8 @@ class Users extends BaseController
 
     protected const CONFIG_RUNTIME = [];
 
+
+
     public function main(int $page, int $limit, string $search_values, string $sort_by, string $sort): ResponseInterface
     {
         $struct = [];
@@ -53,24 +55,14 @@ class Users extends BaseController
         $struct['listing_columns'] = $listing_columns;
 
         $record_properties = [
-            'user_id',
-            'user_name',
-            'user_email',
-            'role_id',
-            'meta_object_uuid',
-            'inherits_role_name',
+
         ];
-        $struct['record_properties'] = $record_properties;
+        $struct['record_properties'] = \GuzabaPlatform\Users\Controllers\User::RECORD_PROPERTIES;
 
         $editable_record_properties = [
-            //'user_id',
-            'user_name',
-            'user_email',
-            //'role_id',
-            //'meta_object_uuid',
-            'inherits_role_name',
+
         ];
-        $struct['editable_record_properties'] = $editable_record_properties;
+        $struct['editable_record_properties'] = \GuzabaPlatform\Users\Controllers\User::EDITABLE_RECORD_PROPERTIES;
 
 
 
