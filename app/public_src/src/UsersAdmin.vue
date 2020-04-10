@@ -63,7 +63,7 @@
                         <!-- apply filter "humanize" on the label -->
                         <b-form-group class="form-group" v-for="(value, index) in putValues" v-if="index!='meta_object_uuid'" v-bind:key="index" :label="index + ':' | humanize" label-align="right" label-cols="3">
 
-                            <template v-if="index=='granted_roles_uuids'">
+                            <template v-if="index === 'granted_roles_uuids'">
                                 <!-- show checkboxes with roles -->
                                 <!--
                                 <template v-for="(Role, index) in roles">
@@ -80,21 +80,28 @@
                                 </b-form-checkbox-group>
 
                             </template>
-                            <template v-else-if="action=='delete'">
+                            <template v-else-if="index.indexOf('password') != -1">
+                                <b-form-input v-model="putValues[index]" :disabled="!editable_record_properties.includes(index)" type="password"></b-form-input>
+                            </template>
+                            <template v-else-if="index === 'user_is_disabled'">
+                                <b-form-checkbox name="user_is_disabled" :value="true" :unchecked-value="false" v-model="putValues.user_is_disabled"></b-form-checkbox>
+                            </template>
+                            <template v-else-if="action === 'delete'">
                                 <b-form-input :value="value" disabled></b-form-input>
                             </template>
                             <template v-else>
                                 <b-form-input v-model="putValues[index]" :disabled="!editable_record_properties.includes(index)"></b-form-input>
                             </template>
-
                         </b-form-group>
 
+                        <!--
                         <b-form-group label="User Password:" label-align="right" label-cols="3">
                             <b-form-input v-model="putValues['user_password']"></b-form-input>
                         </b-form-group>
                         <b-form-group label="Password Confirmation:" label-align="right" label-cols="3">
                             <b-form-input v-model="putValues['user_password_confirmation']"></b-form-input>
                         </b-form-group>
+                        -->
                     </template>
 
                     <template v-else>
@@ -344,9 +351,12 @@
                         this.putValues[key] = row[key];
                     }
                 }
+                this.putValues['user_password'] = '';
+                this.putValues['user_password_confirmation'] = '';
+
                 //console.log(this.putValues);
-                console.log(row);
-                console.log(this.putValues);
+                //console.log(row);
+                //console.log(this.putValues);
                 //this.granted_roles = this.putValues.inherits_role_name.split(',');
                 //this.granted_roles = this.putValues.granted_roles_names.split(',');
                 //this.granted_roles = this.putValues.granted_roles_uuids.split(',');

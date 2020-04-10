@@ -58,6 +58,7 @@ class User extends BaseController
         'user_id',
         'user_name',
         'user_email',
+        'user_is_disabled',
         'user_password',
         'user_password_confirmation',
         'role_id',
@@ -73,6 +74,7 @@ class User extends BaseController
         //'user_id',
         'user_name',
         'user_email',
+        'user_is_disabled',
         'user_password',
         'user_password_confirmation',
         //'role_id',
@@ -147,9 +149,13 @@ class User extends BaseController
     public function update(string $uuid, string $user_name, string $user_email, string $user_password, string $user_password_confirmation, bool $user_is_disabled, array $granted_roles_uuids): ResponseInterface
     {
         $user_properties = func_get_args();
+
         unset($user_properties['granted_roles_uuids']);
         unset($user_properties['uuid']);
+
+        print 'user properties:'.PHP_EOL;
         print_r($user_properties);
+
         $User = new \GuzabaPlatform\Platform\Authentication\Models\User($uuid);
         \GuzabaPlatform\Users\Models\Users::update($User, $user_properties, $granted_roles_uuids);
         return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s with UUID %2s was updated.'), $User->user_name, $User->get_uuid() )] );

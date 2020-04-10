@@ -38,7 +38,7 @@ class Users extends Base
         'user_id',
         'user_name',
         'user_email',
-        'user_disabled',
+        'user_is_disabled',
         'inherits_role_uuid',//check for the given role in the whole inheritance tree
         'inherits_role_name',
         'granted_role_uuid',//check for the given role only in the immediately granted roles
@@ -171,9 +171,14 @@ class Users extends Base
             $w[] = "users.user_email LIKE :user_email";
             $b['user_email'] = '%'.$search_criteria['user_email'].'%';
         }
-        if (array_key_exists('user_disabled', $search_criteria) && $search_criteria['user_disabled'] !== NULL) {
-            $w[] = "users.user_disabled = :user_disabled";
-            $w['user_disabled'] = $search_criteria['user_disabled'];
+        if (array_key_exists('user_is_disabled', $search_criteria) && $search_criteria['user_is_disabled'] !== NULL) {
+            $w[] = "users.user_is_disabled = :user_is_disabled";
+            if (strtolower($search_criteria['user_is_disabled']) === 'false' || !$search_criteria['user_is_disabled']) {
+                $b['user_is_disabled'] = FALSE;
+            } else {
+                $b['user_is_disabled'] = TRUE;
+            }
+
         }
         if (array_key_exists('inherits_role_uuid', $search_criteria) && $search_criteria['inherits_role_uuid'] !== NULL) {
             try {
@@ -214,7 +219,7 @@ class Users extends Base
 
         $q = "
 SELECT
-    users.user_id, users.user_name, users.user_email, users.role_id,
+    users.user_id, users.user_name, users.user_email, users.role_id, users.user_is_disabled,
     meta.meta_object_uuid, meta.meta_class_id, meta.meta_object_create_microtime, meta.meta_object_last_update_microtime,
     meta.meta_object_create_role_id, meta.meta_object_last_update_role_id,
     GROUP_CONCAT(roles_hierarchy.inherited_role_id SEPARATOR ',') AS granted_roles_ids,
@@ -252,6 +257,8 @@ GROUP BY
             } else {
                 $data[$aa]['granted_roles_uuids'] = explode(',', $data[$aa]['granted_roles_uuids']);
             }
+
+            $data[$aa]['user_is_disabled'] = (bool) $data[$aa]['user_is_disabled'];
         }
 
         //better have a method on Role that returns all inheriting roles and use this in IN () clause

@@ -36,6 +36,7 @@ class Users extends BaseController
         'user_name',
         'user_email',
         'role_id',
+        'user_is_disabled',
         'meta_object_uuid',
         //'inherits_role_name',
         'granted_roles_names',
@@ -65,6 +66,8 @@ class Users extends BaseController
 
         $offset = ($page - 1) * $limit;
         $search = json_decode(base64_decode(urldecode($search_values)));
+
+        print_r($search);
 
         $struct['listing_columns'] = self::LISTING_COLUMNS;
         $struct['record_properties'] = \GuzabaPlatform\Users\Controllers\User::RECORD_PROPERTIES;
