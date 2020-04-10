@@ -7,6 +7,7 @@ namespace GuzabaPlatform\Users\Controllers;
 use Guzaba2\Authorization\Role;
 use Guzaba2\Base\Exceptions\InvalidArgumentException;
 use Guzaba2\Base\Exceptions\LogicException;
+use Guzaba2\Base\Exceptions\NotImplementedException;
 use Guzaba2\Base\Exceptions\RunTimeException;
 use Guzaba2\Http\Method;
 use Guzaba2\Kernel\Exceptions\ConfigurationException;
@@ -57,9 +58,12 @@ class User extends BaseController
         'user_id',
         'user_name',
         'user_email',
+        'user_password',
+        'user_password_confirmation',
         'role_id',
         'meta_object_uuid',
-        'inherits_role_name',
+        //'granted_roles_names',// no longer needed
+        'granted_roles_uuids',
     ];
 
     /**
@@ -69,9 +73,13 @@ class User extends BaseController
         //'user_id',
         'user_name',
         'user_email',
+        'user_password',
+        'user_password_confirmation',
         //'role_id',
         //'meta_object_uuid',
-        'inherits_role_name',
+        //'inherits_role_name',
+        //'granted_roles_names',
+        'granted_roles_uuids',
     ];
 
     /**
@@ -101,7 +109,7 @@ class User extends BaseController
      * @param string $user_password
      * @param string $user_password_confirmation
      * @param bool $user_is_disabled
-     * @param array $inherits_role_uuids
+     * @param array $granted_roles_uuids
      * @return ResponseInterface
      * @throws ConfigurationException
      * @throws InvalidArgumentException
@@ -111,11 +119,11 @@ class User extends BaseController
      * @throws RunTimeException
      * @throws \Azonmedia\Exceptions\InvalidArgumentException
      */
-    public function create(string $user_name, string $user_email, string $user_password, string $user_password_confirmation, bool $user_is_disabled, array $inherits_role_uuids): ResponseInterface
+    public function create(string $user_name, string $user_email, string $user_password, string $user_password_confirmation, bool $user_is_disabled, array $granted_roles_uuids): ResponseInterface
     {
         $user_properties = func_get_args();
-        unset($user_properties['inherits_role_uuids']);
-        $User = \GuzabaPlatform\Users\Models\Users::create($user_properties, $inherits_role_uuids);
+        unset($user_properties['$ranted_roles_uuids']);
+        $User = \GuzabaPlatform\Users\Models\Users::create($user_properties, $granted_roles_uuids);
         return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s was created with UUID %2s.'), $User->user_name, $User->get_uuid() )] );
     }
 
@@ -126,7 +134,7 @@ class User extends BaseController
      * @param string $user_password
      * @param string $user_password_confirmation
      * @param bool $user_is_disabled
-     * @param array $inherits_role_uuids
+     * @param array $granted_roles_uuids
      * @return ResponseInterface
      * @throws ConfigurationException
      * @throws InvalidArgumentException
@@ -136,14 +144,26 @@ class User extends BaseController
      * @throws RunTimeException
      * @throws \Azonmedia\Exceptions\InvalidArgumentException
      */
-    public function update(string $uuid, string $user_name, string $user_email, string $user_password, string $user_password_confirmation, bool $user_is_disabled, array $inherits_role_uuids): ResponseInterface
+    public function update(string $uuid, string $user_name, string $user_email, string $user_password, string $user_password_confirmation, bool $user_is_disabled, array $granted_roles_uuids): ResponseInterface
     {
         $user_properties = func_get_args();
-        unset($user_properties['inherits_role_uuids']);
+        unset($user_properties['granted_roles_uuids']);
         unset($user_properties['uuid']);
+        print_r($user_properties);
         $User = new \GuzabaPlatform\Platform\Authentication\Models\User($uuid);
-        \GuzabaPlatform\Users\Models\Users::update($User, $user_properties, $inherits_role_uuids);
+        \GuzabaPlatform\Users\Models\Users::update($User, $user_properties, $granted_roles_uuids);
         return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s with UUID %2s was updated.'), $User->user_name, $User->get_uuid() )] );
+    }
+
+    /**
+     * @return ResponseInterface
+     * @throws NotImplementedException
+     * @throws ReflectionException
+     * @throws \Azonmedia\Exceptions\InvalidArgumentException
+     */
+    public function remove(): ResponseInterface
+    {
+        throw new NotImplementedException(sprintf(t::_('Deleting users is not allowed. Please use %1s() (route: %2s).'), __CLASS__.'::disable', '/admin/users/user/{uuid}/disable' ));
     }
 
     /**

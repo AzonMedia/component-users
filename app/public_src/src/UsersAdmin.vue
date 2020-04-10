@@ -2,12 +2,12 @@
     <div class="crud">
         <div class="content">
             <div id="data" class="tab">
-                <h3>Users <b-button variant="success" @click="show_modal('post', newObject)" size="sm">Create New</b-button> </h3>
+                <h3>Users <b-button variant="success" @click="show_update_modal('post', newObject)" size="sm">Create New</b-button> </h3>
 
                 <!-- ======================= USERS LISTING ================== -->
                 <template>
                     <b-form @submit="submitSearch">
-                        <b-table striped show-empty :items="items" :fields="fields" empty-text="No records found!" @row-clicked="rowClickHandler" no-local-sorting @sort-changed="sortingChanged" head-variant="dark" table-hover>
+                        <b-table striped show-empty :items="items" :fields="fields" empty-text="No records found!" @row-clicked="row_click_handler" no-local-sorting @sort-changed="sortingChanged" head-variant="dark" table-hover>
 
                             <template slot="top-row" slot-scope="{ fields }">
                                 <td v-for="field in fields">
@@ -15,12 +15,12 @@
                                     <template v-if="field.key=='action'">
                                         <b-button size="sm" variant="outline-primary" type="submit" @click="search()">Search</b-button>
                                     </template>
-                                    <template v-else-if="field.key=='inherits_role_name'">
+                                    <template v-else-if="field.key=='granted_roles_names'">
                                         <!-- <b-button size="sm" variant="outline-primary" type="submit" @click="search()">Search</b-button> -->
                                         <!-- <v-select v-model="searchValues[field.key]" label="role_name" :options="roles"></v-select> -->
                                         <!-- while the column is named inherits_role_name actually object_meta_uuid is provided so the field name should be inherits_role_uuid -->
                                         <!-- :reduce makes return only the uuid not the whole object role_name:meta_object_uuid -->
-                                        <v-select v-model="searchValues['inherits_role_uuid']" label="role_name" :reduce="role_name => role_name.meta_object_uuid" :options="roles"></v-select>
+                                        <v-select v-model="searchValues['inherits_roles_uuids']" label="role_name" :reduce="role_name => role_name.meta_object_uuid" :options="roles"></v-select>
                                     </template>
                                     <template v-else>
                                         <b-form-input v-model="searchValues[field.key]" type="search" :placeholder="field.label"></b-form-input>
@@ -30,9 +30,9 @@
 
                             <!-- <template v-slot:cell(meta_object_uuid)="row"> -->
                             <template v-slot:cell(action)="row">
-                                <b-button size="sm" variant="outline-danger" v-on:click.stop="" @click="show_modal('delete', row.item)">Delete</b-button>
+                                <b-button size="sm" variant="outline-danger" v-on:click.stop="" @click="show_update_modal('delete', row.item)">Delete</b-button>
 
-                                <b-button size="sm" variant="outline-success" v-on:click.stop="" @click="show_permissions( row.item)">Permissions</b-button>
+                                <b-button size="sm" variant="outline-success" v-on:click.stop="" @click="show_permissions_modal( row.item)">Permissions</b-button>
                             </template>
 
                         </b-table>
@@ -63,7 +63,7 @@
                         <!-- apply filter "humanize" on the label -->
                         <b-form-group class="form-group" v-for="(value, index) in putValues" v-if="index!='meta_object_uuid'" v-bind:key="index" :label="index + ':' | humanize" label-align="right" label-cols="3">
 
-                            <template v-if="index=='inherits_role_name'">
+                            <template v-if="index=='granted_roles_uuids'">
                                 <!-- show checkboxes with roles -->
                                 <!--
                                 <template v-for="(Role, index) in roles">
@@ -73,8 +73,10 @@
                                 <b-form-checkbox-group id="granted_roles" v-model="granted_roles" name="granted_roles">
                                     <!-- <b-form-checkbox v-for="(Role, index) in roles" :value="Role.meta_object_uuid">{{Role.role_name}}</b-form-checkbox> -->
                                     <!-- because the inherits_role_uuid is not included in the record_properties, only role name, the checkboxes will be driven by name (which is also unique) -->
-                                    <b-form-checkbox v-for="(Role, index) in roles" :value="Role.role_name" v-bind:key="Role.role_name">{{Role.role_name}}</b-form-checkbox>
+                                    <!-- <b-form-checkbox v-for="(Role, index) in roles" :value="Role.role_name" v-bind:key="Role.role_name">{{Role.role_name}}</b-form-checkbox> -->
+                                    <b-form-checkbox v-for="(Role, index) in roles" :value="Role.meta_object_uuid" v-bind:key="Role.role_name">{{Role.role_name}}</b-form-checkbox>
                                     <!-- {{ putValues }} -->
+                                    <!-- {{granted_roles}} -->
                                 </b-form-checkbox-group>
 
                             </template>
@@ -82,9 +84,16 @@
                                 <b-form-input :value="value" disabled></b-form-input>
                             </template>
                             <template v-else>
-                                <b-form-input v-model="putValues[index]"></b-form-input>
+                                <b-form-input v-model="putValues[index]" :disabled="!editable_record_properties.includes(index)"></b-form-input>
                             </template>
 
+                        </b-form-group>
+
+                        <b-form-group label="User Password:" label-align="right" label-cols="3">
+                            <b-form-input v-model="putValues['user_password']"></b-form-input>
+                        </b-form-group>
+                        <b-form-group label="Password Confirmation:" label-align="right" label-cols="3">
+                            <b-form-input v-model="putValues['user_password_confirmation']"></b-form-input>
                         </b-form-group>
                     </template>
 
@@ -286,6 +295,10 @@
                         });
 
                         self.items = resp.data.data;
+                        for (let aa = 0; aa < this.items.length; aa++) {
+                            this.items[aa]['granted_roles_names'] = this.items[aa]['granted_roles_names'].join(',');
+                            //this.items[aa]['granted_roles_uuids'] = this.items[aa]['granted_roles_uuids'].join(',');
+                        }
                         self.totalItems = resp.data.totalItems;
 
                         self.record_properties = resp.data.record_properties;
@@ -309,11 +322,16 @@
                 this.sortBy = 'user_name';
             },
 
-            rowClickHandler(record, index) {
-                this.show_modal('put', record);
+            row_click_handler(record, index) {
+                this.show_update_modal('put', record);
             },
 
-            show_modal(action, row) {
+            /**
+             * Shows the modal dialog for updating/creating/deleting a user record
+             * @param {string} action The actual HTTP method to be executed
+             * @param {array} row
+             */
+            show_update_modal(action, row) {
                 this.action = action;
                 this.crudObjectUuid = null;
                 this.putValues = {};
@@ -327,7 +345,12 @@
                     }
                 }
                 //console.log(this.putValues);
-                this.granted_roles = this.putValues.inherits_role_name.split(',');
+                console.log(row);
+                console.log(this.putValues);
+                //this.granted_roles = this.putValues.inherits_role_name.split(',');
+                //this.granted_roles = this.putValues.granted_roles_names.split(',');
+                //this.granted_roles = this.putValues.granted_roles_uuids.split(',');
+                this.granted_roles = this.putValues.granted_roles_uuids;
                 //console.log(this.granted_roles);
 
                 switch (this.action) {
@@ -385,6 +408,8 @@
                     //because of the custom login needed for handling the granted roles the ActiveRecordDefaultControllercan not be used
                     //let url = '/admin/crud-operations';
                     let url = '/admin/users/user';
+
+                    console.log(this.putValues);
 
                     switch(this.action) {
                         case 'delete' :
@@ -445,7 +470,7 @@
                 }
             },
 
-            show_permissions(row) {
+            show_permissions_modal(row) {
                 this.title_permissions = "Permissions for object of class \"" + row.meta_class_name + "\" with id: " + row.meta_object_id + ", object_uuid: " + row.meta_object_uuid;
                 this.selectedObject = row;
                 let self = this;
@@ -512,7 +537,7 @@
 
                 })
                 .finally(function(){
-                    self.show_permissions(self.selectedObject)
+                    self.show_permissions_modal(self.selectedObject)
                     self.isBusy_permission = false;
                 });
             },

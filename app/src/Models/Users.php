@@ -39,37 +39,37 @@ class Users extends Base
         'user_name',
         'user_email',
         'user_disabled',
-        'inherits_role_uuid',
+        'inherits_role_uuid',//check for the given role in the whole inheritance tree
         'inherits_role_name',
+        'granted_role_uuid',//check for the given role only in the immediately granted roles
+        'granted_role_name',
     ];
 
     /**
      * The create method is on Users as if the GP User class is inherited then the newly created meta records will enter with the new class name
      * This should not be done as this package (GuzabaPlatform/Users) is just a management package, does not (and should not)
      * @param array $user_properties
-     * @param array $inherited_role_uuids
+     * @param array $granted_roles_uuids
      * @return User
      * @throws ConfigurationException
      * @throws InvalidArgumentException
      * @throws LogicException
+     * @throws MultipleValidationFailedException
      * @throws RunTimeException
      * @throws \Guzaba2\Base\Exceptions\InvalidArgumentException
      * @throws \ReflectionException
-     * @throws MultipleValidationFailedException
      */
-    public static function create(array $user_properties, array $inherited_role_uuids): User
+    public static function create(array $user_properties, array $granted_roles_uuids): User
     {
-
         $User = new User();
-        self::update($User, $user_properties, $inherited_role_uuids);
-
+        self::update($User, $user_properties, $granted_roles_uuids);
         return $User;
     }
 
     /**
      * @param User $User
      * @param array $user_properties
-     * @param array $inherited_role_uuids
+     * @param array $granted_roles_uuids
      * @throws ConfigurationException
      * @throws InvalidArgumentException
      * @throws LogicException
@@ -78,7 +78,7 @@ class Users extends Base
      * @throws \Guzaba2\Base\Exceptions\InvalidArgumentException
      * @throws \ReflectionException
      */
-    public static function update(User $User, array $user_properties, array $inherited_role_uuids): void
+    public static function update(User $User, array $user_properties, array $granted_roles_uuids): void
     {
         //a transaction is started as the user creation/update and role granting needs to be one operation.
         $Transaction = ActiveRecord::new_transaction($TR);
@@ -96,16 +96,16 @@ class Users extends Base
 
         $User->write();
 
-        $current_inherited_role_uuids = $User->get_role()->get_inherited_roles_uuids();
-        foreach ($current_inherited_role_uuids as $current_inherited_role_uuid) {
-            if (!in_array($current_inherited_role_uuid, $inherited_role_uuids)) {
+        $current_granted_roles_uuids = $User->get_role()->get_inherited_roles_uuids();
+        foreach ($current_granted_roles_uuids as $current_inherited_role_uuid) {
+            if (!in_array($current_inherited_role_uuid, $granted_roles_uuids)) {
                 $Role = new Role($current_inherited_role_uuid);
                 $User->revoke_role($Role);
             }
         }
 
-        foreach ($inherited_role_uuids as $inherited_role_uuid) {
-            if (!in_array($inherited_role_uuid, $current_inherited_role_uuids)) {
+        foreach ($granted_roles_uuids as $inherited_role_uuid) {
+            if (!in_array($inherited_role_uuid, $current_granted_roles_uuids)) {
                 $Role = new Role($inherited_role_uuid);
                 $User->grant_role($Role);
             }
@@ -210,27 +210,49 @@ class Users extends Base
         }
 
         $b['meta_class_id'] = $MysqlOrmStore->get_class_id(User::class);
+        $b['roles_meta_class_id'] = $MysqlOrmStore->get_class_id(Role::class);
 
         $q = "
 SELECT
     users.user_id, users.user_name, users.user_email, users.role_id,
     meta.meta_object_uuid, meta.meta_class_id, meta.meta_object_create_microtime, meta.meta_object_last_update_microtime,
     meta.meta_object_create_role_id, meta.meta_object_last_update_role_id,
-    GROUP_CONCAT(roles_hierarchy.inherited_role_id SEPARATOR ',') AS inherits_role_id,
-    GROUP_CONCAT(roles.role_name SEPARATOR ',') AS inherits_role_name
+    GROUP_CONCAT(roles_hierarchy.inherited_role_id SEPARATOR ',') AS granted_roles_ids,
+    GROUP_CONCAT(roles.role_name SEPARATOR ',') AS granted_roles_names,
+    GROUP_CONCAT(roles_meta.meta_object_uuid SEPARATOR ',') AS granted_roles_uuids
 FROM
     {$Connection::get_tprefix()}{$users_table} AS users
     INNER JOIN {$Connection::get_tprefix()}{$meta_table} AS meta ON meta.meta_object_id = users.user_id AND meta.meta_class_id = :meta_class_id
     LEFT JOIN {$Connection::get_tprefix()}{$roles_hierarchy_table} AS roles_hierarchy ON roles_hierarchy.role_id = users.role_id
     LEFT JOIN {$Connection::get_tprefix()}{$roles_table} AS roles ON roles.role_id = roles_hierarchy.inherited_role_id
+    LEFT JOIN {$Connection::get_tprefix()}{$meta_table} AS roles_meta ON roles_meta.meta_object_id = roles.role_id AND roles_meta.meta_class_id = :roles_meta_class_id
 {$w_str}
 GROUP BY
     users.user_id
 {$l_str}
         ";
+
         //because the inherited role filter is applied after the query is executed there is no point having two parallel queries (one for data and one for total count if there is limit provided)
 
         $data = $Connection->prepare($q)->execute($b)->fetchAll();
+        $total_found_rows = count($data);
+        for ($aa = 0; $aa < $total_found_rows; $aa++) {
+            if (!$data[$aa]['granted_roles_ids']) {
+                $data[$aa]['granted_roles_ids'] = [];
+            } else {
+                $data[$aa]['granted_roles_ids'] = explode(',', $data[$aa]['granted_roles_ids']);
+            }
+            if (!$data[$aa]['granted_roles_names']) {
+                $data[$aa]['granted_roles_names'] = [];
+            } else {
+                $data[$aa]['granted_roles_names'] = explode(',', $data[$aa]['granted_roles_names']);
+            }
+            if (!$data[$aa]['granted_roles_uuids']) {
+                $data[$aa]['granted_roles_uuids'] = [];
+            } else {
+                $data[$aa]['granted_roles_uuids'] = explode(',', $data[$aa]['granted_roles_uuids']);
+            }
+        }
 
         //better have a method on Role that returns all inheriting roles and use this in IN () clause
 //        $ret = [];

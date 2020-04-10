@@ -37,7 +37,8 @@ class Users extends BaseController
         'user_email',
         'role_id',
         'meta_object_uuid',
-        'inherits_role_name',
+        //'inherits_role_name',
+        'granted_roles_names',
     ];
 
     /**
