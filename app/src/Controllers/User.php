@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace GuzabaPlatform\Users\Controllers;
 
 
+use Azonmedia\Reflection\ReflectionMethod;
 use Guzaba2\Authorization\Role;
 use Guzaba2\Base\Exceptions\InvalidArgumentException;
 use Guzaba2\Base\Exceptions\LogicException;
@@ -126,7 +127,7 @@ class User extends BaseController
         $user_properties = func_get_args();
         unset($user_properties['$ranted_roles_uuids']);
         $User = \GuzabaPlatform\Users\Models\Users::create($user_properties, $granted_roles_uuids);
-        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s was created with UUID %2s.'), $User->user_name, $User->get_uuid() )] );
+        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1$s was created with UUID %2$s.'), $User->user_name, $User->get_uuid() )] );
     }
 
     /**
@@ -148,17 +149,15 @@ class User extends BaseController
      */
     public function update(string $uuid, string $user_name, string $user_email, string $user_password, string $user_password_confirmation, bool $user_is_disabled, array $granted_roles_uuids): ResponseInterface
     {
-        $user_properties = func_get_args();
+        $user_properties = (new ReflectionMethod(__CLASS__, __FUNCTION__))->getArgumentsAsArray(func_get_args());
+        unset($user_properties['granted_roles_uuids'], $user_properties['uuid']);
 
-        unset($user_properties['granted_roles_uuids']);
-        unset($user_properties['uuid']);
-
-        print 'user properties:'.PHP_EOL;
+        //print 'user properties:'.PHP_EOL;
         print_r($user_properties);
 
         $User = new \GuzabaPlatform\Platform\Authentication\Models\User($uuid);
         \GuzabaPlatform\Users\Models\Users::update($User, $user_properties, $granted_roles_uuids);
-        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s with UUID %2s was updated.'), $User->user_name, $User->get_uuid() )] );
+        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1$s with UUID %2$s was updated.'), $User->user_name, $User->get_uuid() )] );
     }
 
     /**
@@ -169,7 +168,7 @@ class User extends BaseController
      */
     public function remove(): ResponseInterface
     {
-        throw new NotImplementedException(sprintf(t::_('Deleting users is not allowed. Please use %1s() (route: %2s).'), __CLASS__.'::disable', '/admin/users/user/{uuid}/disable' ));
+        throw new NotImplementedException(sprintf(t::_('Deleting users is not allowed. Please use %1$s() (route: %2$s).'), __CLASS__.'::disable', '/admin/users/user/{uuid}/disable' ));
     }
 
     /**
@@ -187,7 +186,7 @@ class User extends BaseController
     {
         $User = new \GuzabaPlatform\Platform\Authentication\Models\User($uuid);
         $User->disable();
-        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s was disabled.'), $User->user_name)] );
+        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1$s was disabled.'), $User->user_name)] );
     }
 
     /**
@@ -205,7 +204,7 @@ class User extends BaseController
     {
         $User = new \GuzabaPlatform\Platform\Authentication\Models\User($uuid);
         $User->enable();
-        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s was enabled.'), $User->user_name)] );
+        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1$s was enabled.'), $User->user_name)] );
     }
 
     /**
@@ -224,7 +223,7 @@ class User extends BaseController
         $User = new \GuzabaPlatform\Platform\Authentication\Models\User($uuid);
         $Role = new Role($role_uuid);
         $User->grant_role($Role);
-        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s was granted role %2s.'), $User->user_name, $Role->role_name )] );
+        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1$s was granted role %2$s.'), $User->user_name, $Role->role_name )] );
     }
 
     /**
@@ -243,7 +242,7 @@ class User extends BaseController
         $User = new \GuzabaPlatform\Platform\Authentication\Models\User($uuid);
         $Role = new Role($role_uuid);
         $User->revoke_role($Role);
-        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1s was revoked role %2s.'), $User->user_name, $Role->role_name )] );
+        return self::get_structured_ok_response( ['message' => sprintf(t::_('The user %1$s was revoked role %2$s.'), $User->user_name, $Role->role_name )] );
     }
 
     /**

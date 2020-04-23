@@ -136,7 +136,7 @@ class Users extends Base
 
         foreach ($search_criteria as $key=>$value) {
             if (!in_array($key, self::SEARCH_CRITERIA)) {
-                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('The $search_criteria contains an unsupported key %1s. The supported keys are %2s.'), $key, implode(',', self::SEARCH_CRITERIA) ));
+                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('The $search_criteria contains an unsupported key %1$s. The supported keys are %2$s.'), $key, implode(',', self::SEARCH_CRITERIA) ));
             }
         }
 
@@ -184,7 +184,7 @@ class Users extends Base
             try {
                 $Role = new Role($search_criteria['inherits_role_uuid']);
             } catch (RecordNotFoundException $Exception) {
-                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('There is no role with UUID %1s as provided in "%2s" key in $search_criteria.'), $search_criteria['inherits_role_uuid'], 'inherits_role_uuid' ));
+                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('There is no role with UUID %1$s as provided in "%2$s" key in $search_criteria.'), $search_criteria['inherits_role_uuid'], 'inherits_role_uuid' ));
             }
             $inheriting_roles_ids = $Role->get_all_inheriting_roles_ids();//already includes this role id
             $ids_placeholder = $Connection::array_placeholder($inheriting_roles_ids, 'role');
@@ -195,7 +195,7 @@ class Users extends Base
             try {
                 $Role = new Role( ['role_name' => $search_criteria['inherits_role_name'] ]);//role_name is unique
             } catch (RecordNotFoundException $Exception) {
-                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('There is no role with role_name %1s as provided in "%2s" key in $search_criteria.'), $search_criteria['inherits_role_name'], 'inherits_role_name' ));
+                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('There is no role with role_name %1$s as provided in "%2$s" key in $search_criteria.'), $search_criteria['inherits_role_name'], 'inherits_role_name' ));
             }
             $inheriting_roles_ids = $Role->get_all_inheriting_roles_ids();//already includes this role id
             $ids_placeholder = $Connection::array_placeholder($inheriting_roles_ids, 'role');
