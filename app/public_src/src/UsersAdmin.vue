@@ -365,7 +365,7 @@
 
                 switch (this.action) {
                     case 'delete' :
-                        this.modalTitle = 'Deleting object';
+                        this.modalTitle = 'Deleting user';
                         this.modalVariant = 'danger';
                         this.ButtonVariant = 'danger';
                         //this.actionTitle = 'Are you sure, you want to delete object:';
@@ -373,7 +373,7 @@
                         break;
 
                     case 'put' :
-                        this.modalTitle = 'Edit object';
+                        this.modalTitle = 'Edit user';
                         this.modalVariant = 'success';
                         this.ButtonVariant = 'success';
                         //this.actionTitle = this.selectedClassNameShort + ":";
@@ -383,7 +383,7 @@
                         break;
 
                     case 'post' :
-                        this.modalTitle = 'Create new object';
+                        this.modalTitle = 'Create new user';
                         this.modalVariant = 'success';
                         this.ButtonVariant = 'success';
                         //this.actionTitle = this.selectedClassNameShort + ":";
@@ -393,7 +393,7 @@
                 }
 
                 if (!this.crudObjectUuid && this.action != "post") {
-                    this.requestError = "This object has no meta data!";
+                    this.requestError = "This user has no meta data!";
                     this.actionState = true;
                     this.loadingState = false;
                     this.ButtonTitle = 'Ok';
@@ -419,11 +419,11 @@
                     //let url = '/admin/crud-operations';
                     let url = '/admin/users/user';
 
-                    console.log(this.putValues);
+                    this.putValues.granted_roles_uuids = this.granted_roles;
 
                     switch(this.action) {
                         case 'delete' :
-                            self.loadingMessage = 'Deleting object with uuid: ' + this.crudObjectUuid;
+                            self.loadingMessage = 'Deleting user with uuid: ' + this.crudObjectUuid;
                             //url += this.selectedClassName.toLowerCase() + '/' + this.crudObjectUuid;
                             //url += this.selectedClassName.split('\\').join('-') + '/' + this.crudObjectUuid;
                             url += '/' + this.crudObjectUuid;
@@ -431,7 +431,7 @@
                             break;
 
                         case 'put' :
-                            self.loadingMessage = 'Saving object with uuid: ' + this.crudObjectUuid;
+                            self.loadingMessage = 'Saving user with uuid: ' + this.crudObjectUuid;
                             //url += this.selectedClassName.toLowerCase() + '/' + this.crudObjectUuid;
                             //url += this.selectedClassName.split('\\').join('-') + '/' + this.crudObjectUuid;
                             url += '/' + this.crudObjectUuid;
@@ -442,7 +442,7 @@
                             break;
 
                         case 'post' :
-                            self.loadingMessage = 'Saving new object';
+                            self.loadingMessage = 'Saving new user';
                             //url += this.selectedClassName.toLowerCase();
                             //url += this.selectedClassName.split('\\').join('-');
 
@@ -451,7 +451,8 @@
                             break;
                     }
                     //sendValues.crud_class_name = this.selectedClassName.split('\\').join('-');
-                    sendValues.crud_class_name = 'GuzabaPlatform\\Platform\\Authorization\\Models\\User';
+                    //sendValues.crud_class_name = 'GuzabaPlatform\\Platform\\Authorization\\Models\\User';
+                    //the above is not needed
                     //due to the Roles management the basic CRUD operation can not be used and a custom controller is needed
 
                     this.$http({
@@ -462,7 +463,7 @@
                         .then(resp => {
                             self.requestError = '';
                             self.successfulMessage = resp.data.message;
-                            self.get_users(self.selectedClassName)
+                            self.get_users()
                         })
                         .catch(err => {
                             if (err.response.data.message) {
@@ -556,29 +557,11 @@
                 this.sortBy = ctx.sortBy;
                 this.sortDesc = ctx.sortDesc ? 1 : 0;
 
-                this.get_users(this.selectedClassName);
+                this.get_users();
             }
         },
         props: {
             contentArgs: {}
-        },
-        watch:{
-            contentArgs: {
-                handler: function(value) {
-                    //this.get_users(value.selectedClassName.split('\\').join('.'));
-                }
-            },
-            currentPage: {
-                handler: function(value) {
-                    //this.get_users(this.selectedClassName);
-                }
-            },
-            // $route (to, from) { // needed because by default no class is loaded and when it is loaded the component for the two routes is the same.
-            //     this.selectedClassName = this.$route.params.class.split('-').join('\\');
-            //     //console.log("ASD " + this.selectedClassName)
-            //     this.get_users(this.selectedClassName);
-            //
-            // }
         },
         mounted() {
             this.get_roles();
@@ -611,7 +594,7 @@
     }
 
     #data {
-        width: 65%;
+        width: 100%;
         font-size: 10pt;
     }
 
