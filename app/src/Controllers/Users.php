@@ -67,8 +67,6 @@ class Users extends BaseController
         $offset = ($page - 1) * $limit;
         $search = json_decode(base64_decode(urldecode($search_values)));
 
-        print_r($search);
-
         $struct['listing_columns'] = self::LISTING_COLUMNS;
         $struct['record_properties'] = \GuzabaPlatform\Users\Controllers\User::RECORD_PROPERTIES;
         $struct['editable_record_properties'] = \GuzabaPlatform\Users\Controllers\User::EDITABLE_RECORD_PROPERTIES;

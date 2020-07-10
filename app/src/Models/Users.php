@@ -88,7 +88,6 @@ class Users extends Base
             if (in_array($property_name, ['user_password', 'user_password_confirmation'])) {
                 continue;
             }
-            print $property_name.' '.gettype($property_value).PHP_EOL;
             $User->{$property_name} = $property_value;
         }
         if (!empty($user_properties['user_password']) && !empty($user_properties['user_password_confirmation'])) {
