@@ -4,7 +4,7 @@
     "description": "GuzabaPlatform User management component",
     "keywords": ["user management"],
     "homepage": "https://github.com/AzonMedia/component-users",
-    "license": "BSD-3-Clause",
+    "license": "MIT",
     "minimum-stability": "dev",
     "authors": [
         {
