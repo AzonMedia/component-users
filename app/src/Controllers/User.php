@@ -34,13 +34,16 @@ class User extends BaseController
                 Method::HTTP_GET => [self::class, 'view'],
                 Method::HTTP_PUT => [self::class, 'update'],
                 //deletion is now allowed - instead the users can be disabled
-                //Method::HTTP_DELETE => [self::class, 'remove'],//the ActiveRecordDefaultController could be used as well but for completeness of the API this is also provided
+                Method::HTTP_DELETE => [self::class, 'remove'],//the ActiveRecordDefaultController could be used as well but for completeness of the API this is also provided
             ],
             '/admin/users/user/{uuid}/disable'      => [
                 Method::HTTP_PUT => [self::class, 'disable'],
             ],
             '/admin/users/user/{uuid}/enable'      => [
-                Method::HTTP_PUT => [self::class, 'disable'],
+                Method::HTTP_PUT => [self::class, 'enable'],
+            ],
+            '/admin/users/user/{uuid}/login'      => [
+                Method::HTTP_POST => [self::class, 'login'],
             ],
 
             '/admin/users/user/{uuid}/role/{role_uuid}'      => [ //not used by the UI but still useful API methods
