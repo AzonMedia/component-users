@@ -58,6 +58,7 @@ class Users extends BaseController
      */
     public function main(int $page, int $limit, string $search_values, string $sort_by, string $sort): ResponseInterface
     {
+
         $struct = [];
 
         if ($sort_by === 'none') {
@@ -72,7 +73,7 @@ class Users extends BaseController
         $struct['editable_record_properties'] = \GuzabaPlatform\Users\Controllers\User::EDITABLE_RECORD_PROPERTIES;
 
         //$struct['data'] = Users::get_data_by((array) $search, $offset, $limit, $use_like = TRUE, $sort_by, (bool) $sort_desc, $total_found_rows);
-        $struct['data'] = \GuzabaPlatform\Users\Models\Users::get_users((array) $search, $offset, $limit = 0, $sort_by, $sort, $total_found_rows);
+        $struct['data'] = \GuzabaPlatform\Users\Models\Users::get_users((array) $search, $offset, $limit, $sort_by, $sort, $total_found_rows);
 
         $struct['totalItems'] = $total_found_rows;
         if ($limit) {

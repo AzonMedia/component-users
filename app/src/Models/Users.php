@@ -236,12 +236,28 @@ GROUP BY
     users.user_id
 {$l_str}
         ";
-
         //because the inherited role filter is applied after the query is executed there is no point having two parallel queries (one for data and one for total count if there is limit provided)
 
         $data = $Connection->prepare($q)->execute($b)->fetchAll();
-        $total_found_rows = count($data);
-        for ($aa = 0; $aa < $total_found_rows; $aa++) {
+        //$total_found_rows = count($data);
+
+
+        //TODO - convert to parallel queries
+        $q = "
+SELECT COUNT(*) AS total_count
+FROM
+    {$Connection::get_tprefix()}{$users_table} AS users
+{$w_str}
+        ";
+        //because the inherited role filter is applied after the query is executed there is no point having two parallel queries (one for data and one for total count if there is limit provided)
+
+        unset($b['roles_meta_class_id'], $b['meta_class_id']);
+        $total_found_rows = $Connection->prepare($q)->execute($b)->fetchAll()[0]['total_count'];
+
+
+
+        $query_rows = count($data);
+        for ($aa = 0; $aa < $query_rows; $aa++) {
             if (!$data[$aa]['granted_roles_ids']) {
                 $data[$aa]['granted_roles_ids'] = [];
             } else {
