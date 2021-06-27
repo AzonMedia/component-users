@@ -39,7 +39,8 @@
                     </b-form>
                 </template>
 
-                <b-pagination v-if="totalItems > limit" size="md" :total-rows="totalItems" v-model="currentPage" :per-page="limit"  align="center"></b-pagination>
+                <!-- <b-pagination v-if="totalItems > limit" size="md" :total-rows="totalItems" v-model="currentPage" :per-page="limit"  align="center"></b-pagination> -->
+                <b-pagination-nav :link-gen="linkGen" :number-of-pages="numberOfPages" use-router></b-pagination-nav>
 
                 <!-- ======================= MODAL UPDATE & DELETE ================== -->
                 <b-modal
@@ -161,10 +162,8 @@
 <script>
     import Hook from '@GuzabaPlatform.Platform/components/hooks/Hooks.vue'
     import ToastMixin from '@GuzabaPlatform.Platform/ToastMixin.js'
-
     import vSelect from 'vue-select'
     import 'vue-select/dist/vue-select.css'
-
     export default {
         name: "UsersAdmin",
         mixins: [
@@ -180,37 +179,31 @@
                 limit: 10,
                 currentPage: 1,
                 totalItems: 0,
-
                 //selectedClassName: '',
                 //selectedClassNameShort: '',
+
+                numberOfPages: 1,
+
                 sortBy: 'none',
                 sortDesc: false,
-
                 searchValues: {},
                 putValues: {},
-
                 requestError: '',
-
                 action: '',
                 actionTitle: '',
                 modalTitle: '',
                 modalVariant: '',
                 ButtonTitle: '',
                 ButtonVariant: '',
-
                 crudObjectUuid: '',
-
                 actionState: false,
                 loadingState: false,
-
                 loadingMessage: '',
                 successfulMessage: '',
-
                 items: [],
                 fields: [],//these are the columns
                 record_properties: [],
                 editable_record_properties: [],
-
                 items_permissions: [
                     //must have a default even empty value to avoid the error on template load
                     {
@@ -230,13 +223,10 @@
                         sortable: true
                     },
                 ],
-
                 title_permissions: "Permissions",
                 isBusy_permissions: false,
                 selectedObject: {},
-
                 newObject: {},
-
                 /** The non-user roles */
                 roles: [],
                 /** Used by the modification modal */
@@ -244,16 +234,22 @@
             }
         },
         methods: {
+            /**
+             * @param {int} pageNum
+             * @return {string}
+             */
+            linkGen(pageNum) {
+                return pageNum === 1 ? '?' : `?page=${pageNum}`
+            },
+
             // https://stackoverflow.com/questions/58140842/vue-and-bootstrap-vue-dynamically-use-slots
             setSlotCell(action_name) {
                 return `cell(${action_name})`;
             },
-
             submitSearch(evt){
                 evt.preventDefault()
                 this.search()
             },
-
             get_roles() {
                 this.$http.get('/admin/users/roles')
                     .then(resp => {
@@ -263,21 +259,23 @@
                         this.$bvToast.toast('Roles could not be loaded due to server error.' + '\n' + err.response.data.message)
                     });
             },
-
             get_users() {
+
+                if (typeof this.$route.query.page !== 'undefined') {
+                    this.currentPage = this.$route.query.page;
+                } else {
+                    this.currentPage = 1;
+                }
 
                 this.fields = [];
                 this.newObject = {};
-
                 for (let key in this.searchValues) {
                     if (this.searchValues[key] == '') {
                         delete this.searchValues[key];
                     }
                 }
-
                 let objJsonStr = JSON.stringify(this.searchValues);//this is passed as GET so needs to be stringified
                 let searchValuesToPass = encodeURIComponent(window.btoa(objJsonStr));
-
                 let self = this;
 
                 this.$http.get('/admin/users/' + self.currentPage + '/' + self.limit + '/'+ searchValuesToPass + '/' + this.sortBy + '/' + this.sortDesc)
@@ -300,14 +298,13 @@
                             key: 'action',
                             sortable: true
                         });
-
                         self.items = resp.data.data;
                         for (let aa = 0; aa < this.items.length; aa++) {
                             this.items[aa]['granted_roles_names'] = this.items[aa]['granted_roles_names'].join(',');
                             //this.items[aa]['granted_roles_uuids'] = this.items[aa]['granted_roles_uuids'].join(',');
                         }
                         self.totalItems = resp.data.totalItems;
-
+                        self.numberOfPages = Math.ceil (self.totalItems / self.limit );
                         self.record_properties = resp.data.record_properties;
                         self.editable_record_properties = resp.data.editable_record_properties;
                     })
@@ -316,23 +313,19 @@
                         this.$bvToast.toast('Users data could not be loaded due to server error.' + '\n' + err.response.data.message)
                     });
             },
-
             search() {
                 this.reset_params();
                 this.get_users();
             },
-
             //reset_params(className){
             reset_params() {
                 this.currentPage = 1;
                 this.totalItems = 0;
                 this.sortBy = 'user_name';
             },
-
             row_click_handler(record, index) {
                 this.show_update_modal('put', record);
             },
-
             /**
              * Shows the modal dialog for updating/creating/deleting a user record
              * @param {string} action The actual HTTP method to be executed
@@ -342,18 +335,16 @@
                 this.action = action;
                 this.crudObjectUuid = null;
                 this.putValues = {};
-
                 for (let key in row) {
                     if (key == "meta_object_uuid") {
                         this.crudObjectUuid = row[key];
-                    //} else if (!key.includes("meta_")){
+                        //} else if (!key.includes("meta_")){
                     } else if (!key.includes("meta_") && this.record_properties.includes(key)) { // show only the properties listed in record_properties
                         this.putValues[key] = row[key];
                     }
                 }
                 this.putValues['user_password'] = '';
                 this.putValues['user_password_confirmation'] = '';
-
                 //console.log(this.putValues);
                 //console.log(row);
                 //console.log(this.putValues);
@@ -362,7 +353,6 @@
                 //this.granted_roles = this.putValues.granted_roles_uuids.split(',');
                 this.granted_roles = this.putValues.granted_roles_uuids;
                 //console.log(this.granted_roles);
-
                 switch (this.action) {
                     case 'delete' :
                         this.modalTitle = 'Deleting user';
@@ -371,7 +361,6 @@
                         //this.actionTitle = 'Are you sure, you want to delete object:';
                         this.ButtonTitle = 'Delete';
                         break;
-
                     case 'put' :
                         this.modalTitle = 'Edit user';
                         this.modalVariant = 'success';
@@ -381,7 +370,6 @@
                         //this.actionTitle = 'Editing user:';
                         this.ButtonTitle = 'Save';
                         break;
-
                     case 'post' :
                         this.modalTitle = 'Create new user';
                         this.modalVariant = 'success';
@@ -391,7 +379,6 @@
                         this.ButtonTitle = 'Save';
                         break;
                 }
-
                 if (!this.crudObjectUuid && this.action != "post") {
                     this.requestError = "This user has no meta data!";
                     this.actionState = true;
@@ -401,51 +388,38 @@
                     this.actionState = false
                     this.loadingState = false
                 }
-
                 this.$bvModal.show('crud-modal');
-
             },
-
             update_modal_ok_handler(bvEvt) {
                 if(!this.actionState) {
                     bvEvt.preventDefault() //if actionState is false, doesn't close the modal
                     this.actionState = true
                     this.loadingState = true
-
                     let self = this;
                     let sendValues = {};
-
                     //because of the custom login needed for handling the granted roles the ActiveRecordDefaultControllercan not be used
                     //let url = '/admin/crud-operations';
                     let url = '/admin/users/user';
-
                     this.putValues.granted_roles_uuids = this.granted_roles;
-
                     switch(this.action) {
                         case 'delete' :
                             self.loadingMessage = 'Deleting user with uuid: ' + this.crudObjectUuid;
                             //url += this.selectedClassName.toLowerCase() + '/' + this.crudObjectUuid;
                             //url += this.selectedClassName.split('\\').join('-') + '/' + this.crudObjectUuid;
                             url += '/' + this.crudObjectUuid;
-
                             break;
-
                         case 'put' :
                             self.loadingMessage = 'Saving user with uuid: ' + this.crudObjectUuid;
                             //url += this.selectedClassName.toLowerCase() + '/' + this.crudObjectUuid;
                             //url += this.selectedClassName.split('\\').join('-') + '/' + this.crudObjectUuid;
                             url += '/' + this.crudObjectUuid;
-
                             sendValues = this.putValues;
-
                             delete sendValues['meta_object_uuid'];
                             break;
-
                         case 'post' :
                             self.loadingMessage = 'Saving new user';
                             //url += this.selectedClassName.toLowerCase();
                             //url += this.selectedClassName.split('\\').join('-');
-
                             sendValues = this.putValues;
                             delete sendValues['meta_object_uuid'];
                             break;
@@ -454,7 +428,6 @@
                     //sendValues.crud_class_name = 'GuzabaPlatform\\Platform\\Authorization\\Models\\User';
                     //the above is not needed
                     //due to the Roles management the basic CRUD operation can not be used and a custom controller is needed
-
                     this.$http({
                         method: this.action,
                         url: url,
@@ -480,96 +453,85 @@
                         });
                 }
             },
-
             show_permissions_modal(row) {
                 this.title_permissions = "Permissions for object of class \"" + row.meta_class_name + "\" with id: " + row.meta_object_id + ", object_uuid: " + row.meta_object_uuid;
                 this.selectedObject = row;
                 let self = this;
                 this.$http.get('/admin/permissions-objects/' + this.selectedClassName.split('\\').join('-') + '/' + row.meta_object_uuid)
-                .then(resp => {
-                    self.items_permissions = Object.values(resp.data.items);
-                    //self.fields_permissions = self.fields_permissions_base;//reset the columns
-                    self.fields_permissions = JSON.parse(JSON.stringify(self.fields_permissions_base)) //deep clone and produce again Array
-                    for (let action_name in self.items_permissions[0].permissions) {
-                        self.fields_permissions.push({
-                            key: action_name,
-                            label: action_name,
-                            sortable: true,
-                        });
-                    }
-                })
-                .catch(err => {
-                    self.requestError = err;
-                    self.items_permissions = [];
-                }).finally(function(){
+                    .then(resp => {
+                        self.items_permissions = Object.values(resp.data.items);
+                        //self.fields_permissions = self.fields_permissions_base;//reset the columns
+                        self.fields_permissions = JSON.parse(JSON.stringify(self.fields_permissions_base)) //deep clone and produce again Array
+                        for (let action_name in self.items_permissions[0].permissions) {
+                            self.fields_permissions.push({
+                                key: action_name,
+                                label: action_name,
+                                sortable: true,
+                            });
+                        }
+                    })
+                    .catch(err => {
+                        self.requestError = err;
+                        self.items_permissions = [];
+                    }).finally(function(){
                     self.$bvModal.show('crud-permissions');
                 });
-
             },
-
             toggle_permission(row, action, checked){
                 this.isBusy_permission = true;
-
                 let sendValues = {}
-
                 if (checked) {
                     //if (typeof row.permissions[action] != "undefined") {
                     //var object_uuid = row[action + '_granted'];
                     let object_uuid = row.permissions[action];
-
                     this.action = "delete";
-
                     let url = 'acl-permissions/' + object_uuid;
                 } else {
                     this.action = "post";
-
                     let url = 'acl-permissions';
-
                     sendValues.role_id = row.role_id;
                     sendValues.object_id = this.selectedObject.meta_object_id;
                     sendValues.action_name = action;
                     sendValues.class_name = this.selectedClassName.split(".").join("\\");
                 }
-
                 let self = this;
-
                 this.$http({
                     method: this.action,
                     url: url,
                     data: sendValues
                 })
-                .then(resp => {
-                    this.$bvToast.toast(resp.data.message)
-                })
-                .catch(err => {
-                    console.log(err);
-                    this.$bvToast.toast(err.response.data.message)
-                    //self.requestError = err;
-
-                })
-                .finally(function(){
-                    self.show_permissions_modal(self.selectedObject)
-                    self.isBusy_permission = false;
-                });
+                    .then(resp => {
+                        this.$bvToast.toast(resp.data.message)
+                    })
+                    .catch(err => {
+                        console.log(err);
+                        this.$bvToast.toast(err.response.data.message)
+                        //self.requestError = err;
+                    })
+                    .finally(function(){
+                        self.show_permissions_modal(self.selectedObject)
+                        self.isBusy_permission = false;
+                    });
             },
-
             sortingChanged(ctx) {
                 this.sortBy = ctx.sortBy;
                 this.sortDesc = ctx.sortDesc ? 1 : 0;
-
                 this.get_users();
             }
         },
         props: {
             contentArgs: {}
         },
+        watch: {
+            $route (to, from) { // needed because by default no class is loaded and when it is loaded the component for the two routes is the same.
+                this.get_users();
+            }
+        },
         mounted() {
             this.get_roles();
             this.get_users();
-
         },
     };
-
 </script>
 
 <style>
@@ -577,14 +539,12 @@
         height: 100vh;
         top: 64px;
     }
-
     .tab {
         float: left;
         height: 100%;
         overflow: none;
         padding: 20px;
     }
-
     #sidebar{
         font-size: 10pt;
         border-width: 0 5px 0 0;
@@ -592,28 +552,22 @@
         width: 30%;
         text-align: left;
     }
-
     #data {
         width: 100%;
         font-size: 10pt;
     }
-
     li {
         cursor: pointer;
     }
-
     .btn {
         width: 100%;
     }
-
     tr:hover{
         background-color: #ddd !important;
     }
-
     th:hover{
         background-color: #000 !important;
     }
-
     tr {
         cursor: pointer;
     }
