@@ -32,7 +32,7 @@
                             <template v-slot:cell(action)="row">
                                 <b-button size="sm" variant="outline-danger" v-on:click.stop="" @click="show_update_modal('delete', row.item)">Delete</b-button>
 
-                                <b-button size="sm" variant="outline-success" v-on:click.stop="" @click="show_permissions_modal( row.item)">Permissions</b-button>
+                                <b-button size="sm" variant="outline-success" v-on:click.stop="" @click="show_permissions_modal( row.item )">Permissions</b-button>
                             </template>
 
                         </b-table>
@@ -123,47 +123,32 @@
                 </b-modal>
 
 
-                <!-- ======================= MODAL PERMISSIONS ================== -->
-                <b-modal
-                        id="crud-permissions"
-                        :title="title_permissions"
-                        header-bg-variant="success"
-                        header-text-variant="light"
-                        body-bg-variant="light"
-                        body-text-variant="dark"
-                        hide-footer
-                        size="lg"
-                >
-                    <b-table
-                            striped
-                            show-empty
-                            :items="items_permissions"
-                            :fields="fields_permissions"
-                            empty-text="No records found!"
-                            head-variant="dark"
-                            table-hover
-                            :busy.sync="isBusy_permissions"
-                    >
-
-                        <!-- permision_uuid is just a value that can not be used here as it is only for the first row/role -->
-                        <template v-slot:[setSlotCell(action_name)]="row" v-for="(permission_uuid, action_name) in items_permissions[0].permissions">
-                            <b-form-checkbox :value="row.item.permissions[action_name] ? row.item.permissions[action_name] : 0" unchecked-value="" @change="toggle_permission(row.item, action_name, row.item.permissions[action_name] ? 1 : 0)" v-model="row.item.permissions[action_name]"></b-form-checkbox>
-                        </template>
-
-                    </b-table>
-                </b-modal>
-
             </div>
         </div>
+
+
+        <!-- display: none in order to suppress anything that may be shown out-of-the-box from this component -->
+        <!-- this component is needed for the permission popups -->
+        <CrudC ref="Crud" style="display: none"></CrudC>
+
     </div>
+
+
 
 </template>
 
 <script>
     import Hook from '@GuzabaPlatform.Platform/components/hooks/Hooks.vue'
     import ToastMixin from '@GuzabaPlatform.Platform/ToastMixin.js'
+
+    //imported for the permissions modal
+    import CrudC from '@GuzabaPlatform.Crud/CrudAdmin.vue'
+
     import vSelect from 'vue-select'
     import 'vue-select/dist/vue-select.css'
+
+
+
     export default {
         name: "UsersAdmin",
         mixins: [
@@ -172,6 +157,8 @@
         components: {
             Hook,
             vSelect,
+
+            CrudC,
         },
         data() {
             return {
@@ -453,6 +440,7 @@
                         });
                 }
             },
+            /*
             show_permissions_modal(row) {
                 this.title_permissions = "Permissions for object of class \"" + row.meta_class_name + "\" with id: " + row.meta_object_id + ", object_uuid: " + row.meta_object_uuid;
                 this.selectedObject = row;
@@ -477,6 +465,21 @@
                     self.$bvModal.show('crud-permissions');
                 });
             },
+            */
+            //permissions_page(page_uuid, page_name) {
+            show_permissions_modal(row) {
+                //let row = {};
+                //console.log(row);
+                row = JSON.parse(JSON.stringify(row));
+                //row.meta_object_uuid = page_uuid;
+                row.meta_class_name = 'GuzabaPlatform\\Platform\\Authentication\\Models\\User';//not really needed as the title is overriden
+                this.$refs.Crud.selectedClassName = 'GuzabaPlatform\\Platform\\Authentication\\Models\\User';
+                this.$refs.Crud.selectedObject.meta_object_uuid = row.meta_object_uuid;
+                this.$refs.Crud.showPermissions(row);
+                this.$refs.Crud.title_permissions = 'Permissions for User "' + row.user_name + '"';
+            },
+
+            /*
             toggle_permission(row, action, checked){
                 this.isBusy_permission = true;
                 let sendValues = {}
@@ -513,6 +516,7 @@
                         self.isBusy_permission = false;
                     });
             },
+            */
             sortingChanged(ctx) {
                 this.sortBy = ctx.sortBy;
                 this.sortDesc = ctx.sortDesc ? 1 : 0;
