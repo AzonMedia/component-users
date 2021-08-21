@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace GuzabaPlatform\Users\Models;
 
 use Azonmedia\Exceptions\InvalidArgumentException;
+use Guzaba2\Authorization\Interfaces\RoleInterface;
+use Guzaba2\Authorization\Interfaces\UserInterface;
 use Guzaba2\Authorization\Role;
 use Guzaba2\Authorization\RolesHierarchy;
 use Guzaba2\Base\Base;
@@ -27,6 +29,11 @@ class Users extends Base
         'services'      => [
             'ConnectionFactory',
             'MysqlOrmStore',//needed because the get_class_id() method is used
+        ],
+        'class_dependencies'        => [ //dependencies on other classes
+            //interface                 => implementation
+            UserInterface::class    => User::class,
+            RoleInterface::class    => Role::class
         ],
     ];
 
@@ -61,7 +68,8 @@ class Users extends Base
      */
     public static function create(array $user_properties, array $granted_roles_uuids): User
     {
-        $User = new User();
+        $user_class = self::CONFIG_RUNTIME['class_dependencies'][UserInterface::class];
+        $User = new $user_class();
         self::update($User, $user_properties, $granted_roles_uuids);
         return $User;
     }
@@ -96,17 +104,19 @@ class Users extends Base
 
         $User->write();
 
+        $role_class = self::CONFIG_RUNTIME['class_dependencies'][RoleInterface::class];
+
         $current_granted_roles_uuids = $User->get_role()->get_inherited_roles_uuids();
         foreach ($current_granted_roles_uuids as $current_inherited_role_uuid) {
             if (!in_array($current_inherited_role_uuid, $granted_roles_uuids)) {
-                $Role = new Role($current_inherited_role_uuid);
+                $Role = $role_class($current_inherited_role_uuid);
                 $User->revoke_role($Role);
             }
         }
 
         foreach ($granted_roles_uuids as $inherited_role_uuid) {
             if (!in_array($inherited_role_uuid, $current_granted_roles_uuids)) {
-                $Role = new Role($inherited_role_uuid);
+                $Role = $role_class($inherited_role_uuid);
                 $User->grant_role($Role);
             }
         }
@@ -142,9 +152,11 @@ class Users extends Base
 
         /** @var ConnectionInterface $Connection */
         $Connection = self::get_service('ConnectionFactory')->get_connection(MysqlConnectionCoroutine::class, $CR);
-        $users_table = User::get_main_table();
+        $user_class = self::CONFIG_RUNTIME['class_dependencies'][UserInterface::class];
+        $role_class = self::CONFIG_RUNTIME['class_dependencies'][RoleInterface::class];
+        $users_table = $user_class::get_main_table();
         $roles_hierarchy_table = RolesHierarchy::get_main_table();
-        $roles_table = Role::get_main_table();
+        $roles_table = $role_class::get_main_table();
         /** @var Mysql $MysqlOrmStore */
         $MysqlOrmStore = self::get_service('MysqlOrmStore');
         $meta_table = $MysqlOrmStore::get_meta_table();
@@ -214,8 +226,8 @@ class Users extends Base
             $l_str = "";
         }
 
-        $b['meta_class_id'] = $MysqlOrmStore->get_class_id(User::class);
-        $b['roles_meta_class_id'] = $MysqlOrmStore->get_class_id(Role::class);
+        $b['meta_class_id'] = $MysqlOrmStore->get_class_id($user_class);
+        $b['roles_meta_class_id'] = $MysqlOrmStore->get_class_id($role_class);
 
         $q = "
 SELECT
