@@ -141,12 +141,23 @@ class Users extends Base
      * @throws ConfigurationException
      * @throws \ReflectionException
      */
-    public static function get_users(array $search_criteria, int $offset = 0, int $limit = 0,  string $order_by = 'user_name', string $order = 'ASC', ?int &$total_found_rows = NULL): iterable
-    {
+    public static function get_users(
+        array $search_criteria,
+        int $offset = 0,
+        int $limit = 0,
+        string $order_by = 'user_name',
+        string $order = 'ASC',
+        ?int &$total_found_rows = NULL
+    ): iterable {
 
         foreach ($search_criteria as $key=>$value) {
             if (!in_array($key, self::SEARCH_CRITERIA)) {
-                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException(sprintf(t::_('The $search_criteria contains an unsupported key %1$s. The supported keys are %2$s.'), $key, implode(',', self::SEARCH_CRITERIA) ));
+                $message = sprintf(
+                    t::_('The $search_criteria contains an unsupported key %1$s. The supported keys are %2$s.'),
+                    $key,
+                    implode(',', self::SEARCH_CRITERIA)
+                );
+                throw new \Guzaba2\Base\Exceptions\InvalidArgumentException();
             }
         }
 
@@ -255,17 +266,21 @@ GROUP BY
 
 
         //TODO - convert to parallel queries
-        $q = "
-SELECT COUNT(*) AS total_count
+        $q_count = "
+SELECT
+    COUNT(users.user_id) AS total_count
 FROM
     {$Connection::get_tprefix()}{$users_table} AS users
+    INNER JOIN {$Connection::get_tprefix()}{$meta_table} AS meta ON meta.meta_object_id = users.user_id AND meta.meta_class_id = :meta_class_id
 {$w_str}
         ";
+        $b_count = ['meta_class_id' => $MysqlOrmStore->get_class_id($user_class)];
         //because the inherited role filter is applied after the query is executed there is no point having two parallel queries (one for data and one for total count if there is limit provided)
 
-        unset($b['roles_meta_class_id'], $b['meta_class_id']);
-        $total_found_rows = $Connection->prepare($q)->execute($b)->fetchAll()[0]['total_count'];
+        //unset($b['roles_meta_class_id'], $b['meta_class_id']);
+        $total_found_rows = $Connection->prepare($q_count)->execute($b_count)->fetchAll()[0]['total_count'];
 
+        print 'GGG '.$total_found_rows;
 
 
         $query_rows = count($data);
