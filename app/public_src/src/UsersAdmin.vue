@@ -44,7 +44,7 @@
 
                 <!-- ======================= MODAL UPDATE & DELETE ================== -->
                 <b-modal
-                        id="crud-modal"
+                        id="crud-modal-user"
                         :title="modalTitle"
                         :header-bg-variant="modalVariant"
                         header-text-variant="light"
@@ -375,7 +375,7 @@
                     this.actionState = false
                     this.loadingState = false
                 }
-                this.$bvModal.show('crud-modal');
+                this.$bvModal.show('crud-modal-user');
             },
             update_modal_ok_handler(bvEvt) {
                 if(!this.actionState) {

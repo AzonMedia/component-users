@@ -251,7 +251,7 @@ SELECT
 FROM
     {$Connection::get_tprefix()}{$users_table} AS users
     INNER JOIN {$Connection::get_tprefix()}{$meta_table} AS meta ON meta.meta_object_id = users.user_id AND meta.meta_class_id = :meta_class_id
-    LEFT JOIN {$Connection::get_tprefix()}{$roles_hierarchy_table} AS roles_hierarchy ON roles_hierarchy.role_id = users.role_id
+    INNER JOIN {$Connection::get_tprefix()}{$roles_hierarchy_table} AS roles_hierarchy ON roles_hierarchy.role_id = users.role_id
     LEFT JOIN {$Connection::get_tprefix()}{$roles_table} AS roles ON roles.role_id = roles_hierarchy.inherited_role_id
     LEFT JOIN {$Connection::get_tprefix()}{$meta_table} AS roles_meta ON roles_meta.meta_object_id = roles.role_id AND roles_meta.meta_class_id = :roles_meta_class_id
 {$w_str}
@@ -272,15 +272,16 @@ SELECT
 FROM
     {$Connection::get_tprefix()}{$users_table} AS users
     INNER JOIN {$Connection::get_tprefix()}{$meta_table} AS meta ON meta.meta_object_id = users.user_id AND meta.meta_class_id = :meta_class_id
+    INNER JOIN {$Connection::get_tprefix()}{$roles_hierarchy_table} AS roles_hierarchy ON roles_hierarchy.role_id = users.role_id
 {$w_str}
         ";
-        $b_count = ['meta_class_id' => $MysqlOrmStore->get_class_id($user_class)];
+        $b_count = $b;
+        unset($b_count['roles_meta_class_id']);
+        $b_count['meta_class_id'] = $MysqlOrmStore->get_class_id($user_class);
         //because the inherited role filter is applied after the query is executed there is no point having two parallel queries (one for data and one for total count if there is limit provided)
 
         //unset($b['roles_meta_class_id'], $b['meta_class_id']);
         $total_found_rows = $Connection->prepare($q_count)->execute($b_count)->fetchAll()[0]['total_count'];
-
-        print 'GGG '.$total_found_rows;
 
 
         $query_rows = count($data);

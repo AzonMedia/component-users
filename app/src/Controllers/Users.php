@@ -82,8 +82,6 @@ class Users extends BaseController
             $struct['numPages'] = 1;
         }
 
-        print_r($struct);
-
         return self::get_structured_ok_response($struct);
     }
 
